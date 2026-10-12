@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(wrangler deploy:*)",
+      "Bash(npx wrangler deploy:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.dev.vars)"
+    ]
+  },
+  "extraKnownMarketplaces": {
+    "setkernel": {
+      "source": { "source": "github", "repo": "setkernel/agent-plugins", "ref": "main" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "setkernel@setkernel": true
+  }
+}
