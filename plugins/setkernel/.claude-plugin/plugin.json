@@ -1,0 +1,8 @@
+{
+  "name": "setkernel",
+  "displayName": "setkernel",
+  "description": "setkernel's org-wide skills (verify, review-blockers, ship-pr), subagents (explorer, reviewer) and shell-only hooks.",
+  "author": { "name": "setkernel", "url": "https://github.com/setkernel" },
+  "homepage": "https://github.com/setkernel/agent-plugins",
+  "repository": "https://github.com/setkernel/agent-plugins"
+}

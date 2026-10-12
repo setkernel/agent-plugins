@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "setkernel",
+  "description": "setkernel's org plugin for Claude Code, enabled for every seat through server-managed settings.",
+  "owner": { "name": "setkernel", "url": "https://github.com/setkernel" },
+  "plugins": [
+    {
+      "name": "setkernel",
+      "source": "./plugins/setkernel",
+      "description": "Org-wide skills (verify, review-blockers, ship-pr), subagents (explorer, reviewer) and shell-only hooks."
+    }
+  ]
+}
