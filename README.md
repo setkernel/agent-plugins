@@ -19,6 +19,9 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `rules/agents-pointer.md` | Generated. The ~5-line `kit:core` block that goes at the top of every repo's `AGENTS.md`. |
 | `check/check.sh` | The repo checker any repo's CI fetches. Its block and name lists are generated. |
 | `bin/generate` | The generator (POSIX sh + `jq`). |
+| `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
+| `plugins/setkernel/policy/holds.md` | Generated. The holds as text; the plugin's SessionStart hook prints it into every Claude session. |
+| `bin/dependabot-policy` | Writes the holds into a repo's `.github/dependabot.yml` (`--check` for drift; `crosses` tells whether a version crosses a hold). Python 3, standard library only. |
 | `tests/run.sh` | Tests for the checker and the generator. |
 
 In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `setkernel:reviewer`.
@@ -35,6 +38,37 @@ In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `set
    `managed/settings.json` only takes effect when Raghav pastes it into the org console.
 
 Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`, not in hooks.
+
+## Version holds
+
+Some versions are held back org-wide until Raghav has tested the next one: Node and `@types/node`
+stay on 24 until Node 26 is LTS, TypeScript stays on 6.0.x while Svelte, Astro and typescript-eslint
+reject 7, PHPCS stays on 3.x for WPCS. Each hold in `policy/versions.json` says what is held, why
+(with evidence), what lifts it, and the Dependabot `ignore` entries per ecosystem. Repo-specific pins
+(for example an Expo-pinned set) stay in that repo's own config. Plan: setkernel/hq#87.
+
+How a hold reaches everyone:
+- **Agents**: `bin/generate` renders `plugins/setkernel/policy/holds.md`, which the SessionStart
+  hook prints into every session. The plugin auto-updates from `main`, so a merged change shows up
+  in the next session with nothing to paste. The org rules carry a short "Version holds" section.
+- **Dependabot**, which can't read a shared file: `bin/dependabot-policy` writes a marked block at
+  the top of each `updates` entry's `ignore:` list, keeping the repo's own entries below it. hq's
+  `version-policy` workflow finds repos whose block is missing or stale and opens an `agent-ready`
+  issue in each, listing open Dependabot PRs that cross a hold so the agent closes them.
+
+Add, change or lift a hold:
+1. Raghav tests the new version (or the reason for a new hold is verified).
+2. Edit `policy/versions.json`, run `bin/generate` and `tests/run.sh`, open a PR; Raghav merges.
+3. Sessions show the new holds; the next `version-policy` run opens issues to update every
+   `dependabot.yml`. After a lift, Dependabot opens the upgrade PRs and agents make them pass.
+
+Apply to a repository by hand:
+
+```sh
+python3 bin/dependabot-policy --check /path/to/repo   # exit 1 and a diff when stale
+python3 bin/dependabot-policy /path/to/repo           # write it
+python3 bin/dependabot-policy crosses npm typescript 7.0.2   # prints typescript-6.0, exit 0
+```
 
 ## Check a repository
 
