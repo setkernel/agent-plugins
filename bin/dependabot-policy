@@ -50,19 +50,43 @@ def entries_for(holds, ecosystem):
     return out
 
 
-def render_block(holds, ecosystem, indent):
+def quote(value, style):
+    """A YAML scalar in the file's quote style, so formatters such as Prettier leave it alone."""
+    if style == "'" and "'" not in value:
+        return "'" + value + "'"
+    return json.dumps(value)
+
+
+def render_block(holds, ecosystem, indent, style='"'):
     items = entries_for(holds, ecosystem)
     if not items:
         return []
     pad = " " * indent
     lines = [pad + START, pad + "#     " + POLICY_URL]
     for hold_id, e in items:
-        lines.append(f"{pad}- dependency-name: {json.dumps(e['dependency-name'])} # {hold_id}")
+        lines.append(f"{pad}- dependency-name: {quote(e['dependency-name'], style)} # {hold_id}")
         for key in ("versions", "update-types"):
             if key in e:
-                lines.append(f"{pad}  {key}: {json.dumps(e[key])}")
+                lines.append(f"{pad}  {key}: [" + ", ".join(quote(v, style) for v in e[key]) + "]")
     lines.append(pad + END)
     return lines
+
+
+def quote_style(lines):
+    """The quote style to write in: the existing generated block's (a formatter may have rewritten
+    it), else the one the rest of the file uses most, else double quotes."""
+    inside = False
+    for line in lines:
+        t = line.strip()
+        if t.startswith(START[:30]):
+            inside = True
+        elif t == END:
+            inside = False
+        elif inside and t.startswith("- dependency-name:"):
+            return "'" if "dependency-name: '" in t else '"'
+    single = sum(len(re.findall(r"(?:^|[\s\[,:])'", l)) for l in lines if not l.lstrip().startswith("#"))
+    double = sum(len(re.findall(r'(?:^|[\s\[,:])"', l)) for l in lines if not l.lstrip().startswith("#"))
+    return "'" if single > double else '"'
 
 
 def indent_of(line):
@@ -138,6 +162,7 @@ def drop_empty_ignores(lines):
 
 
 def apply(text, holds):
+    style = quote_style(text.split("\n"))
     lines = drop_empty_ignores(strip_blocks(text.split("\n")))
     # Work bottom-up so earlier indices stay valid.
     for start, end, eco, ind in reversed(entries(lines)):
@@ -156,10 +181,10 @@ def apply(text, holds):
                 if not is_blank(lines[k]) and not lines[k].lstrip().startswith("#"):
                     item_ind = indent_of(lines[k])
                     break
-            block = render_block(holds, eco, item_ind)
+            block = render_block(holds, eco, item_ind, style)
             lines[ignore_at + 1:ignore_at + 1] = block
         else:
-            block = render_block(holds, eco, key_ind + 2)
+            block = render_block(holds, eco, key_ind + 2, style)
             if not block:
                 continue
             last = end - 1
