@@ -15,11 +15,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Tests (checker + generator)
+      - name: Tests (checker, generator, session hook, dependabot-policy)
         run: bash tests/run.sh
       - name: Generated files are current
         run: bin/generate --check
       - name: ShellCheck
         run: shellcheck -S warning bin/generate check/check.sh plugins/setkernel/hooks/*.sh tests/run.sh
       - name: JSON is valid
-        run: for f in .claude-plugin/marketplace.json plugins/setkernel/.claude-plugin/plugin.json plugins/setkernel/hooks/hooks.json managed/*.json; do jq empty "$f"; done
+        run: for f in .claude-plugin/marketplace.json plugins/setkernel/.claude-plugin/plugin.json plugins/setkernel/hooks/hooks.json managed/*.json policy/versions.json; do jq empty "$f"; done

@@ -4,6 +4,7 @@
 #   rules/org-rules.md + managed/settings.base.json -> managed/settings.json (claudeMd + the rest)
 #   (fixed text below)                              -> rules/agents-pointer.md (kit:core block)
 #   pointer block + plugin skill/agent names        -> the generated region of check/check.sh
+#   policy/versions.json                            -> plugins/setkernel/policy/holds.md (session context)
 #
 # Usage: bin/generate           write the files
 #        bin/generate --check   write nothing; exit 1 and show a diff if any file is stale
@@ -20,6 +21,7 @@ esac
 command -v jq >/dev/null 2>&1 || { echo "bin/generate: needs jq" >&2; exit 2; }
 
 rules_url=https://github.com/setkernel/agent-plugins/blob/main/rules/org-rules.md
+policy_url=https://github.com/setkernel/agent-plugins/blob/main/policy/versions.json
 
 # (a) The server-managed settings: claudeMd is rules/org-rules.md verbatim (minus the final newline).
 render_settings() {
@@ -67,14 +69,26 @@ render_check() {
   ' "$root/check/check.sh"
 }
 
+# (c) The org version holds, printed into every Claude session by the plugin's SessionStart hook.
+render_holds() {
+  jq -r --arg url "$policy_url" '
+    "# Version holds (setkernel org policy)",
+    "",
+    "Source: \($url). Never raise a held dependency past its hold anywhere: package.json and lockfiles, `.nvmrc`, `engines`, `actions/setup-node`, Docker images, the runner image. A Dependabot PR that crosses a hold gets closed with a comment naming the hold. A hold changes only when Raghav updates the source; to propose lifting one, open an issue in setkernel/hq.",
+    "",
+    (.holds[] | "- **\(.id)**: \(.summary). \(.rule) Why: \(.why) Lifts when: \(.lift)")
+  ' "$root/policy/versions.json"
+}
+
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 render_settings >"$tmp/settings.json"
+render_holds >"$tmp/holds.md"
 render_pointer >"$tmp/agents-pointer.md"
 render_check >"$tmp/check.sh"
 
 stale=0
-for pair in "settings.json:managed/settings.json" "agents-pointer.md:rules/agents-pointer.md" "check.sh:check/check.sh"; do
+for pair in "settings.json:managed/settings.json" "agents-pointer.md:rules/agents-pointer.md" "check.sh:check/check.sh" "holds.md:plugins/setkernel/policy/holds.md"; do
   src=$tmp/${pair%%:*}
   dest=${pair#*:}
   if [ "$mode" = --check ]; then

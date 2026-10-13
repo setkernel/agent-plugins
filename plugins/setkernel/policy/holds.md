@@ -1,0 +1,7 @@
+# Version holds (setkernel org policy)
+
+Source: https://github.com/setkernel/agent-plugins/blob/main/policy/versions.json. Never raise a held dependency past its hold anywhere: package.json and lockfiles, `.nvmrc`, `engines`, `actions/setup-node`, Docker images, the runner image. A Dependabot PR that crosses a hold gets closed with a comment naming the hold. A hold changes only when Raghav updates the source; to propose lifting one, open an issue in setkernel/hq.
+
+- **node-24**: Node.js and @types/node stay on 24. Node 24 everywhere: .nvmrc, package.json engines.node, actions/setup-node node-version, Docker node images, the runner image, and @types/node 24.x. Why: 24 is the Active LTS. Node 26 becomes LTS on 2026-10-28 (github.com/nodejs/Release schedule.json). Lifts when: Raghav has tested Node 26 after it is LTS.
+- **typescript-6.0**: TypeScript stays on 6.0.x. typescript 6.0.x in every package.json and lockfile; no TypeScript 7 or 6.1, including through tools that bundle it. Why: Peer ranges on 2026-10-13 reject 7.0: svelte-check 4.7.6 (^5 || ^6), @sveltejs/kit 3.0.1 (^6.0.0), svelte2tsx 0.7.61 (^6), @astrojs/check 0.9.10 (^5 || ^6); typescript-eslint 8.71.2 accepts only <6.1.0. Lifts when: Those peer ranges include the new version and Raghav has tested it.
+- **phpcs-3**: PHP_CodeSniffer stays on 3.x. squizlabs/php_codesniffer 3.x wherever WordPress Coding Standards (WPCS) is used. Why: WPCS 3.4.1 (2026-07-27) requires squizlabs/php_codesniffer ^3.13.5; PHPCS 4.0.4 is out. Lifts when: A WPCS release supports PHPCS 4 and Raghav has tested it.

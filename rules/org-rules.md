@@ -40,6 +40,12 @@ otherwise state your assumption and continue.
 - Done means the repo's checks pass on the tree you report. Run them (the `verify` skill); a
   check you could not run is reported as not run, with the reason, never as passed.
 
+## Version holds
+Some versions are held org-wide until Raghav has tested the next one (Node, TypeScript, PHPCS
+and more). The session context lists them; the source is
+https://github.com/setkernel/agent-plugins/blob/main/policy/versions.json. Never raise a held
+dependency past its hold, whatever Dependabot or a tool suggests.
+
 ## End-of-run report
 End every run with these three headings, in this order; leave out one with nothing under it.
 - **Blocked on owner**: decisions or steps only the owner can take, and what happens once done.

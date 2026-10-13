@@ -126,5 +126,80 @@ expect 0 "One more rule.\"" "claudeMd carries the new rule" -- jq .claudeMd "$tm
 mkdir -p "$tmp/copy/plugins/setkernel/skills/new-skill"
 expect 1 "ORG_SKILLS=\"new-skill review-blockers" "a new plugin skill lands in the checker" -- run_sh "$tmp/copy/bin/generate" --check
 
+expect 1 "stale: plugins/setkernel/policy/holds.md" "a policy edit without regenerating is drift" -- \
+  sh -c "jq '.holds[0].summary = \"changed\"' '$tmp/copy/policy/versions.json' >'$tmp/v.json' && mv '$tmp/v.json' '$tmp/copy/policy/versions.json' && sh '$tmp/copy/bin/generate' --check"
+
+# The session hook prints the git state and the version holds.
+hookrepo=$tmp/hookrepo
+mkdir -p "$hookrepo" && git -C "$hookrepo" init -q
+expect 0 "Version holds (setkernel org policy)" "the session hook prints the holds" -- \
+  env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
+expect 0 "typescript-6.0" "the printed holds name each hold" -- \
+  env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
+
+# bin/dependabot-policy: writes the block, is idempotent, keeps the repo's own ignores, lifts cleanly.
+dp() { python3 "$root/bin/dependabot-policy" "$@"; }
+dbrepo() {
+  d=$tmp/db-$1
+  mkdir -p "$d/.github"
+  cat >"$d/.github/dependabot.yml"
+  echo "$d"
+}
+d=$(dbrepo plain <<'EOF'
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Actions: weekly.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+EOF
+)
+cp "$d/.github/dependabot.yml" "$tmp/plain.orig"
+expect 1 "stale: " "--check reports a repo without the block" -- dp --check "$d"
+expect 0 "wrote " "the block is written" -- dp "$d"
+expect 0 "current: " "a second run changes nothing" -- dp --check "$d"
+expect 0 '"typescript" # typescript-6.0' "the npm entry gets the TypeScript hold" -- cat "$d/.github/dependabot.yml"
+expect 1 "" "no composer hold lands in an npm-only file" -- grep squizlabs "$d/.github/dependabot.yml"
+expect 0 "  # Actions: weekly." "the next entry's comment stays with it" -- sed -n '/<<< setkernel/,$p' "$d/.github/dependabot.yml"
+echo '{"holds":[]}' >"$tmp/empty.json"
+expect 0 "wrote " "lifting every hold rewrites the file" -- dp --policy "$tmp/empty.json" "$d"
+expect 0 "" "lifting restores the original byte for byte" -- cmp "$d/.github/dependabot.yml" "$tmp/plain.orig"
+
+d=$(dbrepo own <<'EOF'
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: /
+    ignore:
+      # Repo-specific pin.
+      - dependency-name: 'acme/thing'
+EOF
+)
+dp "$d" >/dev/null
+expect 0 "acme/thing" "the repo's own ignore entries stay" -- cat "$d/.github/dependabot.yml"
+expect 0 "# <<< setkernel version holds" "the block goes first under the existing ignore:" -- \
+  sh -c "grep -A1 '^    ignore:' '$d/.github/dependabot.yml' | tail -1 | grep -q 'setkernel version holds' && grep '<<<' '$d/.github/dependabot.yml'"
+d=$(dbrepo flow <<'EOF'
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    ignore: [{dependency-name: x}]
+EOF
+)
+expect 2 "flow-style" "flow-style ignore is refused" -- dp "$d"
+expect 0 "nothing to do" "a repo without dependabot.yml is fine" -- dp "$tmp/hookrepo"
+
+expect 0 "typescript-6.0" "TypeScript 7 crosses its hold" -- dp crosses npm typescript 7.0.2
+expect 1 "" "TypeScript 6.0.3 does not cross" -- dp crosses npm typescript 6.0.3
+expect 0 "node-24" "@types/node 26 crosses" -- dp crosses npm @types/node 26.6.4
+expect 1 "" "a hold only applies to its ecosystem" -- dp crosses github-actions typescript 7.0.0
+
 echo "$((n - failures))/$n passed"
 [ "$failures" -eq 0 ]

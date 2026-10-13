@@ -1,0 +1,38 @@
+{
+  "$comment": "setkernel org version holds: the one source. Each hold keeps every setkernel repo below a version until Raghav has tested it. Edit here (Raghav's approval), run bin/generate, merge; the plugin shows the change in every Claude session and hq's version-policy workflow brings each repo's .github/dependabot.yml in line. Repo-specific pins stay in that repo's own config. Dependabot ignore entries use each ecosystem's version syntax; bin/dependabot-policy only evaluates '>=X.Y.Z' forms when matching open PRs.",
+  "holds": [
+    {
+      "id": "node-24",
+      "summary": "Node.js and @types/node stay on 24",
+      "rule": "Node 24 everywhere: .nvmrc, package.json engines.node, actions/setup-node node-version, Docker node images, the runner image, and @types/node 24.x.",
+      "why": "24 is the Active LTS. Node 26 becomes LTS on 2026-10-28 (github.com/nodejs/Release schedule.json).",
+      "lift": "Raghav has tested Node 26 after it is LTS.",
+      "ref": "https://github.com/setkernel/hq/issues/87",
+      "dependabot": {
+        "npm": [{ "dependency-name": "@types/node", "versions": [">=25"] }]
+      }
+    },
+    {
+      "id": "typescript-6.0",
+      "summary": "TypeScript stays on 6.0.x",
+      "rule": "typescript 6.0.x in every package.json and lockfile; no TypeScript 7 or 6.1, including through tools that bundle it.",
+      "why": "Peer ranges on 2026-10-13 reject 7.0: svelte-check 4.7.6 (^5 || ^6), @sveltejs/kit 3.0.1 (^6.0.0), svelte2tsx 0.7.61 (^6), @astrojs/check 0.9.10 (^5 || ^6); typescript-eslint 8.71.2 accepts only <6.1.0.",
+      "lift": "Those peer ranges include the new version and Raghav has tested it.",
+      "ref": "https://github.com/setkernel/hq/issues/87",
+      "dependabot": {
+        "npm": [{ "dependency-name": "typescript", "versions": [">=6.1.0"] }]
+      }
+    },
+    {
+      "id": "phpcs-3",
+      "summary": "PHP_CodeSniffer stays on 3.x",
+      "rule": "squizlabs/php_codesniffer 3.x wherever WordPress Coding Standards (WPCS) is used.",
+      "why": "WPCS 3.4.1 (2026-07-27) requires squizlabs/php_codesniffer ^3.13.5; PHPCS 4.0.4 is out.",
+      "lift": "A WPCS release supports PHPCS 4 and Raghav has tested it.",
+      "ref": "https://github.com/setkernel/hq/issues/87",
+      "dependabot": {
+        "composer": [{ "dependency-name": "squizlabs/php_codesniffer", "versions": [">=4.0.0"] }]
+      }
+    }
+  ]
+}
