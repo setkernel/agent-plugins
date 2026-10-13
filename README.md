@@ -14,7 +14,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
 | `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; a POSIX-shell `SessionStart` hook. `plugin.json` has no `version`, so every commit on `main` is a release. |
 | `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
-| `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace and the enabled plugin. |
+| `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace, the enabled plugin, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
 | `rules/agents-pointer.md` | Generated. The ~5-line `kit:core` block that goes at the top of every repo's `AGENTS.md`. |
 | `check/check.sh` | The repo checker any repo's CI fetches. Its block and name lists are generated. |
