@@ -1,7 +1,7 @@
 # setkernel agent-plugins
 
-The org-wide layer for setkernel's AI agents. Public on purpose, so cloud sessions and every
-repo's CI can read it without credentials. **Never put secrets, personal data or personas here.**
+The org-wide layer for setkernel's AI agents. Public on purpose, so sessions and CI can read it
+without credentials. **Never put secrets, personal data or personas here.**
 
 Plan and decisions: [setkernel/hq PR #41](https://github.com/setkernel/hq/pull/41) (discussion
 setkernel/hq#40); its "Amendments accepted by Raghav" section overrides the rest. Releases ship
@@ -16,13 +16,11 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
 | `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace, the enabled plugin, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
-| `rules/agents-pointer.md` | Generated. The ~5-line `kit:core` block that goes at the top of every repo's `AGENTS.md`. |
-| `check/check.sh` | The repo checker any repo's CI fetches. Its block and name lists are generated. |
 | `bin/generate` | The generator (POSIX sh + `jq`). |
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
 | `plugins/setkernel/policy/holds.md` | Generated. The holds as text; the plugin's SessionStart hook prints it into every Claude session. |
 | `bin/dependabot-policy` | Writes the holds into a repo's `.github/dependabot.yml` (`--check` for drift; `crosses` tells whether a version crosses a hold). Python 3, standard library only. |
-| `tests/run.sh` | Tests for the checker and the generator. |
+| `tests/run.sh` | Tests for the generator, the session hook and `bin/dependabot-policy`. |
 
 In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `setkernel:reviewer`.
 
@@ -70,16 +68,6 @@ python3 bin/dependabot-policy /path/to/repo           # write it
 python3 bin/dependabot-policy crosses npm typescript 7.0.2   # prints typescript-6.0, exit 0
 ```
 
-## Check a repository
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/setkernel/agent-plugins/main/check/check.sh | sh -s -- .
-```
-
-It fails when `AGENTS.md` lacks the current pointer block at the top, when `CLAUDE.md` doesn't
-import `@AGENTS.md`, or when `.claude/skills/` or `.claude/agents/` still hold hand-copied copies
-of the org skills and agents. `sh check.sh --print-block` prints the block to paste.
-
 ## Try the plugin locally
 
 ```sh
@@ -87,4 +75,6 @@ claude --plugin-dir ./plugins/setkernel
 ```
 
 Or install it from the marketplace: `/plugin marketplace add setkernel/agent-plugins`, then
-`/plugin install setkernel@setkernel`. Org seats get it automatically from the server-managed settings.
+`/plugin install setkernel@setkernel`. Interactive org seats get it from the server-managed settings.
+Headless runs (the dev-VM agents' `claude -p`) don't install it from there: `sk-agent` installs it
+itself (setkernel/hq#95). Check a machine with `claude plugin list`.
