@@ -196,6 +196,33 @@ EOF
 expect 2 "flow-style" "flow-style ignore is refused" -- dp "$d"
 expect 0 "nothing to do" "a repo without dependabot.yml is fine" -- dp "$tmp/hookrepo"
 
+# Quote style: follow the file (Prettier with singleQuote), and keep a block a formatter rewrote.
+d=$(dbrepo single <<'EOF'
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    groups:
+      deps:
+        patterns: ['*']
+EOF
+)
+dp "$d" >/dev/null
+expect 0 "dependency-name: '@types/node' # node-24" "a single-quoted file gets a single-quoted block" -- cat "$d/.github/dependabot.yml"
+expect 0 "versions: \['>=25'\]" "the versions list is single-quoted too" -- cat "$d/.github/dependabot.yml"
+expect 0 "current: " "the single-quoted block is current" -- dp --check "$d"
+d=$(dbrepo reformatted <<'EOF'
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+EOF
+)
+dp "$d" >/dev/null
+sed -i.bak -e "s/\"@types\/node\"/'@types\/node'/" -e "s/\[\">=25\"\]/['>=25']/" -e "s/\"typescript\"/'typescript'/" -e "s/\[\">=6.1.0\"\]/['>=6.1.0']/" "$d/.github/dependabot.yml"
+rm -f "$d/.github/dependabot.yml.bak"
+expect 0 "current: " "a block a formatter re-quoted stays current" -- dp --check "$d"
+
 expect 0 "typescript-6.0" "TypeScript 7 crosses its hold" -- dp crosses npm typescript 7.0.2
 expect 1 "" "TypeScript 6.0.3 does not cross" -- dp crosses npm typescript 6.0.3
 expect 0 "node-24" "@types/node 26 crosses" -- dp crosses npm @types/node 26.6.4
