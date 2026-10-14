@@ -6,9 +6,24 @@
       "Bash(git push -f:*)",
       "Bash(wrangler deploy:*)",
       "Bash(npx wrangler deploy:*)",
+      "Bash(wrangler d1 migrations apply:*)",
+      "Bash(npx wrangler d1 migrations apply:*)",
+      "Bash(wrangler d1 execute *--remote*--file*)",
+      "Bash(npx wrangler d1 execute *--remote*--file*)",
+      "Bash(wrangler d1 execute *--file*--remote*)",
+      "Bash(npx wrangler d1 execute *--file*--remote*)",
       "Read(./.env)",
+      "Edit(./.env)",
       "Read(./.env.*)",
-      "Read(./.dev.vars)"
+      "Edit(./.env.*)",
+      "Read(./.dev.vars)",
+      "Edit(./.dev.vars)",
+      "Read(./.dev.vars.*)",
+      "Edit(./.dev.vars.*)",
+      "Read(!.env.example)",
+      "Edit(!.env.example)",
+      "Read(!.dev.vars.example)",
+      "Edit(!.dev.vars.example)"
     ]
   },
   "extraKnownMarketplaces": {

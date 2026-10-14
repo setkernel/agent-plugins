@@ -50,6 +50,23 @@ done
 expect 1 "stale: plugins/setkernel/policy/holds.md" "a policy edit without regenerating is drift" -- \
   sh -c "jq '.holds[0].summary = \"changed\"' '$tmp/copy/policy/versions.json' >'$tmp/v.json' && mv '$tmp/v.json' '$tmp/copy/policy/versions.json' && sh '$tmp/copy/bin/generate' --check"
 
+# The managed deny list: a secret closed to Read is closed to Edit too, a wrangler denial covers
+# `npx wrangler` as well, and the example files stay open (a `!` rule carves only from rules before it).
+deny_jq() { jq -er "(.permissions.deny) as \$d | $1" "$root/managed/settings.json"; }
+missing='if . == [] then "none missing" else ("missing: " + join(", ")), false end'
+expect 0 "none missing" "every Read denial has an Edit twin" -- \
+  deny_jq "[\$d[] | select(startswith(\"Read(\")) | \"Edit(\" + .[5:]] - \$d | $missing"
+expect 0 "none missing" "every wrangler denial has an npx wrangler twin" -- \
+  deny_jq "[\$d[] | select(startswith(\"Bash(wrangler \")) | \"Bash(npx \" + .[5:]] - \$d | $missing"
+expect 0 "none missing" "remote D1 migrations and remote --file runs are denied" -- \
+  deny_jq "[\"Bash(wrangler d1 migrations apply:*)\", \"Bash(wrangler d1 execute *--remote*--file*)\", \"Bash(wrangler d1 execute *--file*--remote*)\"] - \$d | $missing"
+expect 0 "none missing" ".dev.vars.* is denied and the example files are carved out" -- \
+  deny_jq "[\"Read(./.dev.vars.*)\", \"Read(!.env.example)\", \"Read(!.dev.vars.example)\"] - \$d | $missing"
+expect 0 "carve-outs last" "each carve-out follows the denials it opens" -- \
+  deny_jq '[$d | to_entries[] | select(.value | test("^(Read|Edit)\\(")) | {key, carve: (.value | test("^(Read|Edit)\\(!"))}]
+    | ([.[] | select(.carve) | .key] | min) as $first | ([.[] | select(.carve | not) | .key] | max) as $last
+    | if $first > $last then "carve-outs last" else "a carve-out at \($first) comes before a denial at \($last)", false end'
+
 # The session hook prints the git state and the version holds.
 hookrepo=$tmp/hookrepo
 mkdir -p "$hookrepo" && git -C "$hookrepo" init -q
