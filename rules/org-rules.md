@@ -35,10 +35,19 @@ otherwise state your assumption and continue.
 
 ## Changes
 - Keep each change focused on its issue; no drive-by refactors. New behaviour needs a test.
-- Branches `<type>/<short-name>` (agents use `claude/` or `agent/`); conventional commits
-  (`feat: …`, `fix: …`). Every PR needs Raghav's review before merge; never merge your own.
+- Branches `<type>/<short-name>` (Claude sessions and agents: see Who did it); conventional
+  commits (`feat: …`, `fix: …`). Every PR needs Raghav's review before merge; never merge your own.
 - Done means the repo's checks pass on the tree you report. Run them (the `verify` skill); a
   check you could not run is reported as not run, with the reason, never as passed.
+
+## Who did it
+The live walls show who did what, and anything from Raghav's account without a signature shows
+as Raghav himself. So use the branch prefix for where you run, and from Raghav's account end
+every issue, PR description and comment you write with its signature line:
+- sk-agent on an agent VM: `agent/<issue>-<slug>`; no signature, keep the `_Automated: …_` line.
+- Claude Code on the web (`CLAUDE_CODE_REMOTE=true`): `claude/<topic>`, `— Claude Cloud`.
+- raghav-dev (`hostname` is `raghav-dev`): `raghav-dev/<topic>`, `— raghav-dev`.
+- Raghav's Mac lead session: `lead/<topic>`, `— Claude Lead`.
 
 ## Version holds
 Some versions are held org-wide until Raghav has tested the next one (Node, TypeScript, PHPCS
