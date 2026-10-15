@@ -189,6 +189,7 @@ grepo=$tmp/guardrepo
 mkdir -p "$grepo" && git -C "$grepo" init -q -b feat && git -C "$grepo" -c user.name=t -c user.email=t@example.com commit -q --allow-empty -m init
 git -C "$grepo" config alias.yolo 'push --force'
 git -C "$grepo" config alias.nuke '!git reset --hard'
+git -C "$grepo" config alias.st status
 mrepo=$tmp/mainrepo
 mkdir -p "$mrepo" && git -C "$mrepo" init -q -b main
 # guard <dir> <command>: run the hook on a Bash call as Claude Code sends it.
@@ -228,6 +229,7 @@ git -c alias.up=push up -f
 git -c "alias.x=!git push -f" x
 git yolo
 git nuke
+git st; git st; git st; git yolo
 EOF
 while IFS= read -r c; do
   expect 0 "" "guard allows: $c" -- guard "$grepo" "$c"
@@ -250,6 +252,10 @@ echo done
 EOF
 expect 2 "default branch (main)" "on main, a bare git push is a push to the default branch" -- guard "$mrepo" "git push"
 expect 2 "default branch (main)" "on main, git push origin HEAD is too" -- guard "$mrepo" "git push origin HEAD"
+# A cd earlier in the command line moves the repo the guard reads the branch from.
+expect 2 "default branch (main)" "cd into a repo on main, then a bare git push" -- guard "$tmp" "cd mainrepo && git push"
+expect 2 "default branch (main)" "cd into a repo on main, then git push origin HEAD" -- guard "$tmp" "cd $mrepo; git push origin HEAD"
+expect 0 "" "cd from main into a feature checkout, then a bare git push" -- guard "$mrepo" "cd ../guardrepo && git push"
 # The hook sees the session's environment: sk-agent's runs set SETKERNEL_GUARD_NO_PUSH=1.
 jq -n --arg d "$grepo" '{tool_input: {command: "git push origin feat"}, cwd: $d}' >"$tmp/feat.json"
 jq -n --arg d "$grepo" '{tool_input: {command: "git -C . push \"--force\"", description: "a \"quoted\" push"}, cwd: $d}' >"$tmp/force.json"

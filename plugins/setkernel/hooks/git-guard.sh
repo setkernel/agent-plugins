@@ -45,8 +45,8 @@ block() {
 
 # check_cmd <text>: check each simple command in a command line.
 check_cmd() {
+  [ "$depth" -lt 4 ] || return 0
   depth=$((depth + 1))
-  [ "$depth" -le 4 ] || return 0
   segs=$(printf '%s\n' "$1" | tr -d "\"'\\\\" | tr ';&|(){}<>`' '\n\n\n\n\n\n\n\n\n\n')
   IFS=$nl
   for seg in $segs; do
@@ -56,9 +56,11 @@ check_cmd() {
     IFS=$nl
   done
   IFS=" 	$nl"
+  depth=$((depth - 1))
 }
 
 # check_words <word…>: skip assignments and wrappers (env, sudo, sh -c, xargs, …), then check git.
+# A cd or pushd moves the directory later segments read the branch and aliases from.
 check_words() {
   while [ $# -gt 0 ]; do
     case $1 in
@@ -73,7 +75,14 @@ check_words() {
       *) break ;;
     esac
   done
-  case ${1-} in git | */git) shift && check_git "$@" ;; esac
+  case ${1-} in
+    git | */git) shift && check_git "$@" ;;
+    cd | pushd) shift
+      while [ $# -gt 0 ]; do
+        case $1 in --) shift; break ;; -?*) shift ;; *) break ;; esac
+      done
+      case ${1-} in '' | -) ;; /*) cwd=$1 ;; *) cwd=$cwd/$1 ;; esac ;;
+  esac
 }
 
 check_git() {
