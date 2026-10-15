@@ -93,6 +93,16 @@ python3 bin/dependabot-policy crosses npm typescript 7.0.2   # prints typescript
 claude --plugin-dir ./plugins/setkernel
 ```
 
+On a seat with the managed settings, that copy is ignored (`--plugin-dir copy of "setkernel" ignored:
+plugin is locked by managed settings` in the debug log) and the published plugin loads instead. Load a
+renamed copy:
+
+```sh
+d=$(mktemp -d) && cp -R plugins/setkernel "$d/"
+jq '.name = "setkernel-try"' plugins/setkernel/.claude-plugin/plugin.json >"$d/setkernel/.claude-plugin/plugin.json"
+claude --plugin-dir "$d/setkernel"
+```
+
 Or install it from the marketplace: `/plugin marketplace add setkernel/agent-plugins`, then
 `/plugin install setkernel@setkernel`. Interactive org seats get it from the server-managed settings.
 Headless runs (the dev-VM agents' `claude -p`) don't install it from there: `sk-agent` installs it

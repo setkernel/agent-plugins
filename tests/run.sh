@@ -41,6 +41,11 @@ expect 1 "stale: managed/settings.json" "a rules edit without regenerating is dr
 expect 0 "wrote managed/settings.json" "regenerating writes the settings" -- run_sh "$tmp/copy/bin/generate"
 expect 0 "generated files are current" "after regenerating there is no drift" -- run_sh "$tmp/copy/bin/generate" --check
 expect 0 "One more rule.\"" "claudeMd carries the new rule" -- jq .claudeMd "$tmp/copy/managed/settings.json"
+# A forceLoginOrgUUID placeholder never reaches the pasted file; a filled-in UUID does.
+expect 1 "" "managed/settings.json holds no REPLACE_WITH_ placeholder" -- grep -q REPLACE_WITH_ "$root/managed/settings.json"
+jq '.forceLoginOrgUUID = "00000000-0000-0000-0000-000000000000"' "$root/managed/settings.base.json" >"$tmp/copy/managed/settings.base.json"
+expect 0 "wrote managed/settings.json" "a filled-in org UUID regenerates the settings" -- run_sh "$tmp/copy/bin/generate"
+expect 0 "00000000-0000-0000-0000-000000000000" "the filled-in org UUID is in the settings" -- jq -r .forceLoginOrgUUID "$tmp/copy/managed/settings.json"
 
 # The committed org rules give each Claude environment its branch prefix and signature (#16).
 for marker in '`raghav-dev/<topic>`, `— raghav-dev`' '`claude/<topic>`, `— Claude Cloud`' '`lead/<topic>`, `— Claude Lead`' '`agent/<issue>-<slug>`'; do
