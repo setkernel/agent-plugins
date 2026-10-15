@@ -62,6 +62,8 @@ expect 0 "none missing" "remote D1 migrations and remote --file runs are denied"
   deny_jq "[\"Bash(wrangler d1 migrations apply:*)\", \"Bash(wrangler d1 execute *--remote*--file*)\", \"Bash(wrangler d1 execute *--file*--remote*)\"] - \$d | $missing"
 expect 0 "none missing" ".dev.vars.* is denied and the example files are carved out" -- \
   deny_jq "[\"Read(./.dev.vars.*)\", \"Read(!.env.example)\", \"Read(!.dev.vars.example)\"] - \$d | $missing"
+expect 0 "none missing" "keys and certificates are denied at any depth" -- \
+  deny_jq "[\"*.pem\", \"*.key\", \"*.p8\", \"*.p12\", \"*.jks\", \"*.keystore\", \"*.mobileprovision\", \"id_rsa\", \"id_ed25519\"] | map(\"Read(**/\" + . + \")\") - \$d | $missing"
 expect 0 "carve-outs last" "each carve-out follows the denials it opens" -- \
   deny_jq '[$d | to_entries[] | select(.value | test("^(Read|Edit)\\(")) | {key, carve: (.value | test("^(Read|Edit)\\(!"))}]
     | ([.[] | select(.carve) | .key] | min) as $first | ([.[] | select(.carve | not) | .key] | max) as $last
