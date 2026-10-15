@@ -58,4 +58,8 @@ for pair in "settings.json:managed/settings.json" "holds.md:plugins/setkernel/po
   fi
 done
 [ "$mode" = --check ] && [ "$stale" -eq 0 ] && echo "generated files are current"
+# A placeholder that locks every seat out if pasted as is: say so on every run until it is filled.
+if grep -q REPLACE_WITH_ "$tmp/settings.json"; then
+  echo "note: managed/settings.json still holds a REPLACE_WITH_ placeholder (forceLoginOrgUUID); fill it in before pasting it into the console" >&2
+fi
 exit "$stale"

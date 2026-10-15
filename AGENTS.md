@@ -31,7 +31,8 @@ the Claude org console. No secrets or Infisical values are involved.
 
 ## Layout
 - `plugins/setkernel/`: the plugin: `skills/` (`verify`, `review-blockers`, `ship-pr`), `agents/`
-  (`explorer`, `reviewer`), `hooks/` (the POSIX-sh `SessionStart` hook).
+  (`explorer`, `reviewer`), `hooks/` (POSIX sh: the `SessionStart`
+  context hook and `git-guard.sh`, the `PreToolUse` git guard).
 - `.claude-plugin/marketplace.json`: the `setkernel` marketplace; lists the one plugin.
 - `rules/org-rules.md`: the one source of the org rules (becomes `claudeMd` in managed settings).
 - `managed/settings.base.json`: hand-edited part of the managed settings (`permissions.deny`,
@@ -47,7 +48,11 @@ the Claude org console. No secrets or Infisical values are involved.
 - Hooks and scripts stay POSIX sh: the agent VMs have no Node. `bin/generate` avoids
   `$(cat <<HEREDOC)` because bash 3.2 (macOS `/bin/sh`) mis-parses it when the text holds an
   apostrophe.
-- Org-wide denials go in `permissions.deny` in `managed/settings.base.json`, not in hooks.
+- Org-wide denials go in `permissions.deny` in `managed/settings.base.json`. The git guard hook
+  covers only git commands a text rule can't match; both are a speed bump, not a boundary (README).
+- `allowManagedHooksOnly` is on: only managed and this plugin's hooks run, so a hook belongs here.
+- `managed/settings.base.json` holds a `REPLACE_WITH_` placeholder until Raghav fills in
+  `forceLoginOrgUUID`; pasted as is, no login would match it. `bin/generate` warns while it is there.
 - Keep `rules/org-rules.md` to about 40–60 lines: it is loaded into every Claude session.
 - Don't add a `version` to `plugin.json`; without it every commit on `main` is a release.
 - A change to the plugin hits every seat on merge; test it here first.

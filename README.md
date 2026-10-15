@@ -12,9 +12,9 @@ from `main`; every merge needs Raghav's code-owner approval.
 | Path | What it is |
 | --- | --- |
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
-| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; a POSIX-shell `SessionStart` hook. `plugin.json` has no `version`, so every commit on `main` is a release. |
+| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` (session context) and the git guard (`PreToolUse` on Bash, see below). `plugin.json` has no `version`, so every commit on `main` is a release. |
 | `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
-| `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace, the enabled plugin, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
+| `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace and the only marketplace source allowed (`strictKnownMarketplaces`), the enabled plugin, org-only hooks (`allowManagedHooksOnly`), login, update and retention policy, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
 | `bin/generate` | The generator (POSIX sh + `jq`). |
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
@@ -35,7 +35,26 @@ In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `set
 4. After merge, plugin changes reach every seat through auto-update. A change to
    `managed/settings.json` only takes effect when Raghav pastes it into the org console.
 
-Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`, not in hooks.
+Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`; the
+git guard covers only the git commands a text rule can't pin down.
+
+## Guardrails, and their limits
+
+- **`permissions.deny`** in the managed settings: force-push, deploy and remote-D1 commands in the
+  forms people type (any runner: `npx`, `pnpm`, `yarn`, `bunx`), secret files at any depth with the
+  example files left open, home-directory credentials, and edits to shell startup files.
+- **The git guard** (`plugins/setkernel/hooks/git-guard.sh`, `PreToolUse` on Bash) splits the
+  command line and blocks a force push, a push to the default branch, deleting a remote branch,
+  `git reset --hard` and `git clean -f`, however they are spelled (`git -C dir`, `sh -c`, aliases).
+  With `SETKERNEL_GUARD_NO_PUSH=1` in the environment (sk-agent's runs) it blocks every push.
+- **`allowManagedHooksOnly`**: only hooks from the managed settings and this plugin run, so the
+  guard can't be switched off by a repo or user hook, and a repo's own hooks don't run.
+
+These are a speed bump against mistakes, not the security boundary. Bash rules and the guard match
+command text, so a script, `/usr/bin/git`, a variable or `python -c` still gets past them, and
+`Read` rules don't stop a program that opens the file itself
+([Bash rule limits](https://code.claude.com/docs/en/permissions#bash-rule-limits)). The boundary
+is the OS sandbox and keeping credentials out of the agent's reach: setkernel/hq#186.
 
 ## Version holds
 
