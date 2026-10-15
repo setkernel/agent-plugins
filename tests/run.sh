@@ -279,6 +279,11 @@ echo done
 EOF
 expect 2 "default branch (main)" "on main, a bare git push is a push to the default branch" -- guard "$mrepo" "git push"
 expect 2 "default branch (main)" "on main, git push origin HEAD is too" -- guard "$mrepo" "git push origin HEAD"
+# A redirect's file descriptor number (the 2 in 2>&1) is not a branch name.
+expect 2 "default branch (main)" "on main, git push origin 2>&1" -- guard "$mrepo" "git push origin 2>&1"
+expect 2 "default branch (main)" "on main, git push -u origin 2>/dev/null" -- guard "$mrepo" "git push -u origin 2>/dev/null"
+expect 2 "default branch (main)" "on main, git push origin 2>>log" -- guard "$mrepo" "git push origin 2>>log"
+expect 0 "" "on main, git push origin feature 2>&1 names a branch" -- guard "$mrepo" "git push origin feature 2>&1"
 # A cd earlier in the command line moves the repo the guard reads the branch from.
 expect 2 "default branch (main)" "cd into a repo on main, then a bare git push" -- guard "$tmp" "cd mainrepo && git push"
 expect 2 "default branch (main)" "cd into a repo on main, then git push origin HEAD" -- guard "$tmp" "cd $mrepo; git push origin HEAD"

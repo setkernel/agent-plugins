@@ -61,7 +61,10 @@ block() {
 check_cmd() {
   [ "$depth" -lt 4 ] || return 0
   depth=$((depth + 1))
-  segs=$(printf '%s\n' "$1" | tr -d "\"'\\\\" | tr ';&|(){}<>`' '\n\n\n\n\n\n\n\n\n\n')
+  # Drop a redirect's file descriptor number (the 2 in 2>&1) so it is not read as a git word.
+  segs=$(printf '%s\n' "$1" | tr -d "\"'\\\\" |
+    sed -E 's/(^|[[:space:];&|(){}`])[0-9]+([<>])/\1\2/g' |
+    tr ';&|(){}<>`' '\n\n\n\n\n\n\n\n\n\n')
   IFS=$nl
   for seg in $segs; do
     IFS=' 	'
