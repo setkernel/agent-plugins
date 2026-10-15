@@ -51,10 +51,12 @@ git guard covers only the git commands a text rule can't pin down.
   guard can't be switched off by a repo or user hook, and a repo's own hooks don't run.
   Side effects: it also blocks `/goal`, hooks in agent frontmatter and in a project's settings, and
   narrows `statusLine` to the managed settings. This plugin's hooks still run; a hook from a
-  GitHub-sourced mod does not. (The VM persona hook is covered in the PR for #23.)
+  GitHub-sourced mod does not.
 - **Version pin**: `requiredMinimumVersion` 2.1.295 stops an older Claude Code from starting
   (`minimumVersion` only limits updates). `autoUpdatesChannel` is `latest`, because `stable` still
-  resolved to 2.1.292, below the minimum. A seat below 2.1.295 has to update by hand once. There is
+  resolved to 2.1.292, below the minimum. A seat below 2.1.295 has to update by hand once. The Homebrew `claude-code` cask tracks stable (2.1.292
+  today) and ignores `autoUpdatesChannel`, so a Mac on it would stop starting: before pasting the
+  settings, switch those Macs to the `claude-code@latest` cask. There is
   no `requiredMaximumVersion` yet: no Claude Code hold exists, so Raghav sets one if he wants it.
 - **`gh pr merge`** is denied for everyone, humans' Macs included, so merging goes through the web UI.
 
