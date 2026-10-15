@@ -47,6 +47,11 @@ for marker in '`raghav-dev/<topic>`, `— raghav-dev`' '`claude/<topic>`, `— C
   expect 0 "$marker" "claudeMd's Who did it names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
 done
 
+# The committed org rules carry the self-hosted Google Fonts rule (#20).
+for marker in '## Fonts' 'self-hosted' '`fonts.googleapis.com`' '`FONTCONFIG_FILE`' 'Arimo for Arial'; do
+  expect 0 "$marker" "claudeMd's Fonts names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
+done
+
 expect 1 "stale: plugins/setkernel/policy/holds.md" "a policy edit without regenerating is drift" -- \
   sh -c "jq '.holds[0].summary = \"changed\"' '$tmp/copy/policy/versions.json' >'$tmp/v.json' && mv '$tmp/v.json' '$tmp/copy/policy/versions.json' && sh '$tmp/copy/bin/generate' --check"
 

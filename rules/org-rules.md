@@ -55,6 +55,16 @@ and more). The session context lists them; the source is
 https://github.com/setkernel/agent-plugins/blob/main/policy/versions.json. Never raise a held
 dependency past its hold, whatever Dependabot or a tool suggests.
 
+## Fonts
+Every typeface in sites, apps, documents and generated images comes from Google Fonts (open
+licences), self-hosted: subset woff2 for the web, TTF for image renders, committed with the
+licence file or from a pinned Fontsource package. Never load fonts from `fonts.googleapis.com`,
+`fonts.gstatic.com` or any CDN at runtime, and never rely on system fonts (Arial, Georgia,
+`-apple-system` stacks); a generic family as the last fallback is fine. Images render through a
+pinned fontconfig (`FONTCONFIG_FILE`), so every host draws them the same. Metric-compatible swaps
+for existing designs: Arimo for Arial, Gelasio for Georgia, Tinos for Times New Roman, Cousine for
+Courier New.
+
 ## End-of-run report
 End every run with these three headings, in this order; leave out one with nothing under it.
 - **Blocked on owner**: decisions or steps only the owner can take, and what happens once done.
