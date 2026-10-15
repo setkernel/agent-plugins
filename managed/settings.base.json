@@ -1,24 +1,48 @@
 {
   "permissions": {
     "deny": [
-      "Bash(git push --force:*)",
-      "Bash(git push -f:*)",
+      "Bash(git push *--force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * -f*)",
+      "Bash(git push * +*)",
+      "Bash(git push +*)",
+      "Bash(git * push *--force*)",
+      "Bash(git * push -f*)",
+      "Bash(git * push * -f*)",
+      "Bash(git * push * +*)",
+      "Bash(git * push +*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh * pr merge*)",
       "Bash(wrangler deploy:*)",
-      "Bash(npx wrangler deploy:*)",
+      "Bash(* wrangler deploy)",
+      "Bash(* wrangler deploy *)",
+      "Bash(wrangler versions deploy:*)",
+      "Bash(* wrangler versions deploy)",
+      "Bash(* wrangler versions deploy *)",
+      "Bash(wrangler pages deploy:*)",
+      "Bash(* wrangler pages deploy)",
+      "Bash(* wrangler pages deploy *)",
       "Bash(wrangler d1 migrations apply:*)",
-      "Bash(npx wrangler d1 migrations apply:*)",
+      "Bash(* wrangler d1 migrations apply)",
+      "Bash(* wrangler d1 migrations apply *)",
       "Bash(wrangler d1 execute *--remote*--file*)",
-      "Bash(npx wrangler d1 execute *--remote*--file*)",
+      "Bash(* wrangler d1 execute *--remote*--file*)",
       "Bash(wrangler d1 execute *--file*--remote*)",
-      "Bash(npx wrangler d1 execute *--file*--remote*)",
-      "Read(./.env)",
-      "Edit(./.env)",
-      "Read(./.env.*)",
-      "Edit(./.env.*)",
-      "Read(./.dev.vars)",
-      "Edit(./.dev.vars)",
-      "Read(./.dev.vars.*)",
-      "Edit(./.dev.vars.*)",
+      "Bash(* wrangler d1 execute *--file*--remote*)",
+      "Bash(npm run deploy*)",
+      "Bash(pnpm deploy*)",
+      "Bash(pnpm run deploy*)",
+      "Bash(yarn deploy*)",
+      "Bash(yarn run deploy*)",
+      "Bash(bun run deploy*)",
+      "Read(**/.env)",
+      "Edit(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(**/.env.*)",
+      "Read(**/.dev.vars)",
+      "Edit(**/.dev.vars)",
+      "Read(**/.dev.vars.*)",
+      "Edit(**/.dev.vars.*)",
       "Read(**/*.pem)",
       "Edit(**/*.pem)",
       "Read(**/*.key)",
@@ -37,12 +61,39 @@
       "Edit(**/id_rsa)",
       "Read(**/id_ed25519)",
       "Edit(**/id_ed25519)",
+      "Read(~/.ssh/**)",
+      "Edit(~/.ssh/**)",
+      "Read(~/.config/sk-agent/**)",
+      "Edit(~/.config/sk-agent/**)",
+      "Read(~/.claude/.credentials.json)",
+      "Edit(~/.claude/.credentials.json)",
+      "Read(~/.git-credentials)",
+      "Edit(~/.git-credentials)",
+      "Read(~/.npmrc)",
+      "Edit(~/.npmrc)",
+      "Read(~/.docker/config.json)",
+      "Edit(~/.docker/config.json)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.profile)",
       "Read(!.env.example)",
       "Edit(!.env.example)",
       "Read(!.dev.vars.example)",
       "Edit(!.dev.vars.example)"
     ]
   },
+  "allowManagedHooksOnly": true,
+  "strictKnownMarketplaces": [
+    {
+      "source": "github",
+      "repo": "setkernel/agent-plugins",
+      "ref": "main"
+    },
+    {
+      "source": "github",
+      "repo": "setkernel/agent-plugins"
+    }
+  ],
   "extraKnownMarketplaces": {
     "setkernel": {
       "source": {
@@ -56,7 +107,23 @@
   "enabledPlugins": {
     "setkernel@setkernel": true
   },
+  "forceLoginOrgUUID": "REPLACE_WITH_SETKERNEL_ORG_UUID",
+  "forceRemoteSettingsRefresh": true,
+  "autoUpdatesChannel": "latest",
+  "requiredMinimumVersion": "2.1.295",
+  "syncClaudeAiSkills": false,
+  "syncClaudeAiPlugins": false,
+  "pluginConfigs": {
+    "cc-plugin-sec-default@builtin": {
+      "options": {
+        "allowManagedModsOnly": true
+      }
+    }
+  },
+  "cleanupPeriodDays": 365,
+  "enableAllProjectMcpServers": false,
   "env": {
+    "CLAUDE_CODE_SYNC_PLUGIN_INSTALL": "1",
     "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
     "OTEL_METRICS_EXPORTER": "otlp",
     "OTEL_LOGS_EXPORTER": "otlp",
@@ -64,6 +131,7 @@
     "OTEL_EXPORTER_OTLP_ENDPOINT": "http://sk-obs01.int.setkernel.net:4318",
     "OTEL_METRIC_EXPORT_INTERVAL": "10000",
     "OTEL_LOGS_EXPORT_INTERVAL": "5000",
-    "OTEL_METRICS_INCLUDE_SESSION_ID": "false"
+    "OTEL_METRICS_INCLUDE_SESSION_ID": "false",
+    "OTEL_LOG_MANAGED_SETTINGS": "1"
   }
 }
