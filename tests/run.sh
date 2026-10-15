@@ -230,6 +230,21 @@ git -c "alias.x=!git push -f" x
 git yolo
 git nuke
 git st; git st; git st; git yolo
+git push --force-w origin feat
+git push --force-with=feat:abc origin feat
+git push --forc origin feat
+git push --mirr
+git push --mi origin
+git push --del origin feat
+git push origin --de feat
+git push --prun origin
+git push --pru origin
+git push --al origin
+git push --br origin
+git reset --har HEAD
+git reset --ha
+git clean --forc
+git clean -d --fo
 EOF
 while IFS= read -r c; do
   expect 0 "" "guard allows: $c" -- guard "$grepo" "$c"
@@ -239,8 +254,15 @@ git push origin feat
 git push -u origin agent/23-harden
 git push origin HEAD
 git push --follow-tags origin feat
+git push --foll origin feat
+git push --no-force-with-lease origin feat
+git push --dry-run --porcelain origin feat
+git push --repo origin feat
+git push --push-o ci.skip origin feat
 git status
 git reset --soft HEAD~1
+git reset --so HEAD~1
+git clean --dry-run -d
 git reset HEAD file.txt
 git clean -n
 git clean -nd
@@ -256,6 +278,12 @@ expect 2 "default branch (main)" "on main, git push origin HEAD is too" -- guard
 expect 2 "default branch (main)" "cd into a repo on main, then a bare git push" -- guard "$tmp" "cd mainrepo && git push"
 expect 2 "default branch (main)" "cd into a repo on main, then git push origin HEAD" -- guard "$tmp" "cd $mrepo; git push origin HEAD"
 expect 0 "" "cd from main into a feature checkout, then a bare git push" -- guard "$mrepo" "cd ../guardrepo && git push"
+# An alias run with -C is expanded and checked in that repository, not the session's cwd.
+git -C "$mrepo" config alias.pub 'push origin HEAD'
+git -C "$grepo" config alias.pub 'push origin HEAD'
+expect 2 "default branch (main)" "git -C <repo on main> pub, an alias for push origin HEAD" -- guard "$grepo" "git -C $mrepo pub"
+expect 0 "" "git -C <feature checkout> pub from a repo on main" -- guard "$mrepo" "git -C $grepo pub"
+expect 2 "git reset --hard" "git -C <repo> nuke, an alias only that repo has" -- guard "$tmp" "git -C guardrepo nuke"
 # The hook sees the session's environment: sk-agent's runs set SETKERNEL_GUARD_NO_PUSH=1.
 jq -n --arg d "$grepo" '{tool_input: {command: "git push origin feat"}, cwd: $d}' >"$tmp/feat.json"
 jq -n --arg d "$grepo" '{tool_input: {command: "git -C . push \"--force\"", description: "a \"quoted\" push"}, cwd: $d}' >"$tmp/force.json"

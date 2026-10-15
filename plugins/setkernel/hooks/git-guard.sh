@@ -6,9 +6,12 @@
 #   - deleting a remote branch (`--delete`, `-d`, `:branch`, `--prune`);
 #   - a push to the default branch (`main`, `master`, origin's HEAD), named or implied;
 #   - `git reset --hard` and `git clean -f…`.
+# Long options count in any abbreviation git accepts (`--force-w`, `--del`, `--har`).
 # With SETKERNEL_GUARD_NO_PUSH=1 in the environment (sk-agent's runs) it blocks every push.
 #
 # A speed bump against mistakes, not a sandbox: a script or `g=git; $g push` still gets past it.
+# A bare `git push` is checked against the current branch's name only, so a push that reaches the
+# default branch through upstream tracking (`push.default=upstream`, upstream `origin/main`) passes.
 # It drops quotes and splits on shell operators, so a commit message that holds `; git push -f`
 # is blocked too. Exit 2 blocks the call and shows Claude the reason; exit 0 lets it through.
 # POSIX sh; reads the hook JSON with jq, or with sed where jq is missing.
@@ -33,6 +36,17 @@ fi
 [ -n "$cmd" ] || exit 0
 cwd=${cwd:-.}
 depth=0
+
+# abbrev <arg> <long-option>…: true if <arg>, minus any `=value`, is one of the options or a prefix
+# of one. git takes any unique prefix and rejects an ambiguous one, so this never blocks a command
+# git would run as something else.
+abbrev() {
+  w=${1%%=*}
+  shift
+  case $w in --?*) ;; *) return 1 ;; esac
+  for o; do case $o in "$w"*) return 0 ;; esac; done
+  return 1
+}
 
 block() {
   if [ "${SETKERNEL_GUARD_NO_PUSH:-}" = 1 ]; then
@@ -85,6 +99,7 @@ check_words() {
   esac
 }
 
+# check_git <arg…>: check a git command run in $cwd.
 check_git() {
   dir=$cwd
   while [ $# -gt 0 ]; do
@@ -106,13 +121,16 @@ check_git() {
   shift
   case $sub in
     push) check_push "$@" ;;
-    reset) for a; do [ "$a" = --hard ] && block "git reset --hard"; done ;;
-    clean) for a; do case $a in --force | -f* | -[!-]*f*) block "git clean $a" ;; esac; done ;;
-    *) # An alias: check what it expands to.
+    reset) for a; do abbrev "$a" --hard && block "git reset $a"; done ;;
+    clean) for a; do
+        case $a in --*) abbrev "$a" --force && block "git clean $a" ;; -f* | -[!-]*f*) block "git clean $a" ;; esac
+      done ;;
+    *) # An alias: check what it expands to, in the directory git ran it in (a subshell keeps
+      # this call's cwd and dir; a block there exits 2, which is passed on).
       exp=$(git -C "$dir" config --get "alias.$sub" 2>/dev/null) || return 0
       case $exp in
-        !*) check_cmd "${exp#!} $*" ;;
-        *) check_cmd "git $exp $*" ;;
+        !*) (cwd=$dir; check_cmd "${exp#!} $*") || exit $? ;;
+        *) (cwd=$dir; check_cmd "git $exp $*") || exit $? ;;
       esac ;;
   esac
 }
@@ -124,12 +142,15 @@ check_push() {
     a=$1
     shift
     case $a in
-      --force | --force-with-lease | --force-with-lease=* | --force-if-includes | --mirror) block "a force push (git push $a)" ;;
-      --delete | --prune) block "deleting a remote branch (git push $a)" ;;
-      --all | --branches) block "a push of every branch, the default branch too (git push $a)" ;;
-      --tags) named=1 ;;
-      --repo | --receive-pack | --exec | --push-option) shift ;;
-      --*) ;;
+      --*)
+        abbrev "$a" --force --force-with-lease --force-if-includes --mirror && block "a force push (git push $a)"
+        abbrev "$a" --delete --prune && block "deleting a remote branch (git push $a)"
+        abbrev "$a" --all --branches && block "a push of every branch, the default branch too (git push $a)"
+        if abbrev "$a" --tags; then
+          named=1
+        else
+          case $a in *=*) ;; *) abbrev "$a" --repo --receive-pack --exec --push-option && [ $# -gt 0 ] && shift ;; esac
+        fi ;;
       -*)
         case $a in *f*) block "a force push (git push $a)" ;; esac
         case $a in *d*) block "deleting a remote branch (git push $a)" ;; esac
