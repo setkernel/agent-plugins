@@ -54,10 +54,12 @@ git guard covers only the git commands a text rule can't pin down.
   GitHub-sourced mod does not.
 - **Version pin**: `requiredMinimumVersion` 2.1.295 stops an older Claude Code from starting
   (`minimumVersion` only limits updates). `autoUpdatesChannel` is `latest`, because `stable` still
-  resolved to 2.1.292, below the minimum. A seat below 2.1.295 has to update by hand once. The Homebrew `claude-code` cask tracks stable (2.1.292
-  today) and ignores `autoUpdatesChannel`, so a Mac on it would stop starting: before pasting the
-  settings, switch those Macs to the `claude-code@latest` cask. There is
-  no `requiredMaximumVersion` yet: no Claude Code hold exists, so Raghav sets one if he wants it.
+  resolved to 2.1.292, below the minimum. A seat below 2.1.295 has to update by hand once. The
+  Homebrew `claude-code` cask tracks stable and ignores `autoUpdatesChannel`, so it can't reach
+  2.1.295 until stable does, and a Mac on it stops starting: before pasting the settings, switch
+  those Macs to the `claude-code@latest` cask (`brew uninstall --cask claude-code && brew install
+  --cask claude-code@latest`). There is no `requiredMaximumVersion` yet: no Claude Code hold
+  exists, so Raghav sets one if he wants it.
 - **`gh pr merge`** is denied for everyone, humans' Macs included, so merging goes through the web UI.
 
 ### Locks that belong in the VM policy file, not here
