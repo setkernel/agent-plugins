@@ -65,8 +65,8 @@ settings_key() { jq -e "$1" "$root/managed/settings.json"; }
 expect 0 '"2.1.295"' "requiredMinimumVersion pins 2.1.295" -- settings_key .requiredMinimumVersion
 expect 1 "" "the update-only minimumVersion is gone" -- settings_key 'has("minimumVersion")'
 expect 0 '"latest"' "the update channel can reach the required minimum" -- settings_key .autoUpdatesChannel
-expect 0 "false" "claude.ai skills do not sync" -- settings_key ".syncClaudeAiSkills == false"
-expect 0 "false" "claude.ai plugins do not sync" -- settings_key ".syncClaudeAiPlugins == false"
+expect 0 "true" "claude.ai skills do not sync" -- settings_key ".syncClaudeAiSkills == false"
+expect 0 "true" "claude.ai plugins do not sync" -- settings_key ".syncClaudeAiPlugins == false"
 expect 0 "true" "managed mods only" -- settings_key '.pluginConfigs["cc-plugin-sec-default@builtin"].options.allowManagedModsOnly'
 expect 0 '"1"' "managed settings are logged to OTEL" -- settings_key .env.OTEL_LOG_MANAGED_SETTINGS
 expect 0 "true" "gh pr merge is denied" -- settings_key '.permissions.deny | index("Bash(gh pr merge*)") != null'
