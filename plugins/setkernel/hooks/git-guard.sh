@@ -12,6 +12,7 @@
 # A speed bump against mistakes, not a sandbox: a script or `g=git; $g push` still gets past it.
 # A bare `git push` is checked against the current branch's name only, so a push that reaches the
 # default branch through upstream tracking (`push.default=upstream`, upstream `origin/main`) passes.
+# The branch is read before the command runs, so `git checkout main && git push` passes too.
 # It drops quotes and splits on shell operators, so a commit message that holds `; git push -f`
 # is blocked too. Exit 2 blocks the call and shows Claude the reason; exit 0 lets it through.
 # POSIX sh; reads the hook JSON with jq, or with sed where jq is missing.
@@ -157,7 +158,7 @@ check_push() {
       -*)
         case $a in *f*) block "a force push (git push $a)" ;; esac
         case $a in *d*) block "deleting a remote branch (git push $a)" ;; esac
-        case $a in *o) shift ;; esac ;;
+        case $a in *o) [ $# -gt 0 ] && shift ;; esac ;;
       *)
         if [ -z "$remote" ]; then
           remote=$a
