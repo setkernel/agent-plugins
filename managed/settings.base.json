@@ -11,6 +11,8 @@
       "Bash(git * push * -f*)",
       "Bash(git * push * +*)",
       "Bash(git * push +*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh * pr merge*)",
       "Bash(wrangler deploy:*)",
       "Bash(* wrangler deploy)",
       "Bash(* wrangler deploy *)",
@@ -107,8 +109,17 @@
   },
   "forceLoginOrgUUID": "REPLACE_WITH_SETKERNEL_ORG_UUID",
   "forceRemoteSettingsRefresh": true,
-  "autoUpdatesChannel": "stable",
-  "minimumVersion": "2.1.292",
+  "autoUpdatesChannel": "latest",
+  "requiredMinimumVersion": "2.1.295",
+  "syncClaudeAiSkills": false,
+  "syncClaudeAiPlugins": false,
+  "pluginConfigs": {
+    "cc-plugin-sec-default@builtin": {
+      "options": {
+        "allowManagedModsOnly": true
+      }
+    }
+  },
   "cleanupPeriodDays": 365,
   "enableAllProjectMcpServers": false,
   "env": {
@@ -120,6 +131,7 @@
     "OTEL_EXPORTER_OTLP_ENDPOINT": "http://sk-obs01.int.setkernel.net:4318",
     "OTEL_METRIC_EXPORT_INTERVAL": "10000",
     "OTEL_LOGS_EXPORT_INTERVAL": "5000",
-    "OTEL_METRICS_INCLUDE_SESSION_ID": "false"
+    "OTEL_METRICS_INCLUDE_SESSION_ID": "false",
+    "OTEL_LOG_MANAGED_SETTINGS": "1"
   }
 }

@@ -49,7 +49,8 @@ woff2 for the web, TTF for image renders, committed with its licence or from a p
 package. No fonts from `fonts.googleapis.com`, `fonts.gstatic.com` or any CDN at runtime, and no
 system fonts (Arial, Georgia, `-apple-system`) except a generic last fallback. Images render through
 a pinned fontconfig (`FONTCONFIG_FILE`). Metric-compatible swaps: Arimo for Arial, Gelasio for
-Georgia, Tinos for Times New Roman, Cousine for Courier New.
+Georgia, Tinos for Times New Roman, Cousine for Courier New. Native Apple apps (setkernel/CardinalApp:
+iOS and watchOS) are exempt and use the platform's system fonts.
 ## End-of-run report
 End every run with these headings, in this order, leaving out any with nothing under it:
 - **Blocked on owner**: decisions or steps only the owner can take, and what happens once done.

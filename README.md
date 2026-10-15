@@ -49,6 +49,23 @@ git guard covers only the git commands a text rule can't pin down.
   With `SETKERNEL_GUARD_NO_PUSH=1` in the environment (sk-agent's runs) it blocks every push.
 - **`allowManagedHooksOnly`**: only hooks from the managed settings and this plugin run, so the
   guard can't be switched off by a repo or user hook, and a repo's own hooks don't run.
+  Side effects: it also blocks `/goal`, hooks in agent frontmatter and in a project's settings, and
+  narrows `statusLine` to the managed settings. This plugin's hooks still run; a hook from a
+  GitHub-sourced mod does not. (The VM persona hook is covered in the PR for #23.)
+- **Version pin**: `requiredMinimumVersion` 2.1.295 stops an older Claude Code from starting
+  (`minimumVersion` only limits updates). `autoUpdatesChannel` is `latest`, because `stable` still
+  resolved to 2.1.292, below the minimum. A seat below 2.1.295 has to update by hand once. There is
+  no `requiredMaximumVersion` yet: no Claude Code hold exists, so Raghav sets one if he wants it.
+- **`gh pr merge`** is denied for everyone, humans' Macs included, so merging goes through the web UI.
+
+### Locks that belong in the VM policy file, not here
+The console can't target groups, so anything placed there also binds the humans' Macs. These go in
+the VM-only policy file (setkernel/hq#186) with the console on `managedSourcesBehavior: "merge"`:
+`strictPluginOnlyCustomization: ["hooks","mcp"]`, `crossSessionInbound: "refuse"`, model pinning
+(`availableModels`, `availableModelsMatch: "exact"`, `deniedModels`, `maxEffortLevel`), unattended
+mode as `--permission-mode auto --permission-prompts none` in place of
+`--dangerously-skip-permissions`, and `autoMode.environment` plus a deny on pushing to `main`
+(auto mode otherwise allows a push to any branch of the working repo).
 
 These are a speed bump against mistakes, not the security boundary. Bash rules and the guard match
 command text, so a script, `/usr/bin/git`, a variable or `python -c` still gets past them, and
