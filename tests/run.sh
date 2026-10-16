@@ -75,7 +75,7 @@ expect 0 "none missing" "every wrangler denial has an npx wrangler twin" -- \
 expect 0 "none missing" "remote D1 migrations and remote --file runs are denied" -- \
   deny_jq "[\"Bash(wrangler d1 migrations apply:*)\", \"Bash(wrangler d1 execute *--remote*--file*)\", \"Bash(wrangler d1 execute *--file*--remote*)\"] - \$d | $missing"
 expect 0 "none missing" "force-push is denied in every spelling, with the flag first or after the remote, and as +refspec" -- \
-  deny_jq "[\"Bash(git push --force*)\", \"Bash(git push * --force*)\", \"Bash(git push -f*)\", \"Bash(git push * -f*)\", \"Bash(git push * +*)\"] - \$d | $missing"
+  deny_jq "[\"Bash(git push --force*)\", \"Bash(git push * --force*)\", \"Bash(git push -f*)\", \"Bash(git push * -f*)\", \"Bash(git push -uf*)\", \"Bash(git push * -uf*)\", \"Bash(git push * +*)\"] - \$d | $missing"
 expect 0 "^0$" "the old force-push rules (blind to --force-with-lease) are gone" -- \
   deny_jq "[\$d[] | select(. == \"Bash(git push --force:*)\" or . == \"Bash(git push -f:*)\")] | length"
 expect 0 "none missing" "git reset --hard and git clean are denied" -- \
