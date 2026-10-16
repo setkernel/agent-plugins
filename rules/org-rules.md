@@ -36,7 +36,14 @@ otherwise state your assumption and continue.
 ## Changes
 - Keep each change focused on its issue; no drive-by refactors. New behaviour needs a test.
 - Branches `<type>/<short-name>` (Claude sessions and agents: see Who did it); conventional
-  commits (`feat: …`, `fix: …`). Every PR needs Raghav's review before merge; never merge your own.
+  commits (`feat: …`, `fix: …`).
+- Merging (in force as each repo's gate is qualified; until then every PR needs Raghav's review):
+  a PR merges when its risk class's quorum is met on the same head commit. R0: one non-author
+  approval. R1: that plus an independent Codex review. R2: two approvals, Codex and a visual diff.
+  R3 (secrets, auth, money, DNS and tofu, workflows, agent runtime and policy, destructive
+  changes): R2 plus Raghav's `/approve <sha>`. Never review your own work and never merge your
+  own; only the merge App merges; Raghav's seat never counts as a Claude reviewer.
+  Full rule: setkernel/hq decision 0007 (and `policy/risk.yml` once it exists).
 - Done means the repo's checks pass on the tree you report. Run them (the `verify` skill); a
   check you could not run is reported as not run, with the reason, never as passed.
 

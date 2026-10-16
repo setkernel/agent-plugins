@@ -52,6 +52,15 @@ for marker in '## Fonts' 'self-hosted' '`fonts.googleapis.com`' '`FONTCONFIG_FIL
   expect 0 "$marker" "claudeMd's Fonts names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
 done
 
+# The committed org rules carry the v4 merge quorum in place of "every PR needs Raghav's review" (#25).
+for marker in "in force as each repo's gate is qualified" 'R0: one non-author' 'R1: that plus an independent Codex review' \
+  'R2: two approvals, Codex and a visual diff' 'R3 (secrets, auth, money, DNS and tofu' 'R2 plus Raghav'"'"'s `/approve <sha>`' \
+  'never merge your$' 'only the merge App merges' 'never counts as a Claude reviewer' 'decision 0007'; do
+  expect 0 "$marker" "claudeMd's Changes names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
+done
+expect 1 '^0$' "claudeMd drops the old review-before-merge rule" -- \
+  sh -c "jq -r .claudeMd '$root/managed/settings.json' | grep -c 'review before merge'"
+
 expect 1 "stale: plugins/setkernel/policy/holds.md" "a policy edit without regenerating is drift" -- \
   sh -c "jq '.holds[0].summary = \"changed\"' '$tmp/copy/policy/versions.json' >'$tmp/v.json' && mv '$tmp/v.json' '$tmp/copy/policy/versions.json' && sh '$tmp/copy/bin/generate' --check"
 
