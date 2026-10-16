@@ -31,14 +31,14 @@ the Claude org console. No secrets or Infisical values are involved.
 
 ## Layout
 - `plugins/setkernel/`: the plugin: `skills/` (`verify`, `review-blockers`, `ship-pr`), `agents/`
-  (`explorer`, `reviewer`), `hooks/` (the POSIX-sh `SessionStart` hook).
+  (`explorer`, `reviewer`), `hooks/` (POSIX-sh: the `SessionStart` context hook and the `PreToolUse` D1 guard).
 - `.claude-plugin/marketplace.json`: the `setkernel` marketplace; lists the one plugin.
 - `rules/org-rules.md`: the one source of the org rules (becomes `claudeMd` in managed settings).
 - `managed/settings.base.json`: hand-edited part of the managed settings (`permissions.deny`,
   marketplace, enabled plugin).
 - `bin/generate`: builds the generated files below from those sources.
 - `bin/dependabot-policy`: writes the version holds into a repo's `dependabot.yml`.
-- `tests/run.sh`: tests for the generator, the session hook and `bin/dependabot-policy`.
+- `tests/run.sh`: tests for the generator, the session and D1 guard hooks and `bin/dependabot-policy`.
 
 ## Traps and don't-touch
 - Generated, never edit by hand: `managed/settings.json` and `plugins/setkernel/policy/holds.md`.
@@ -47,7 +47,10 @@ the Claude org console. No secrets or Infisical values are involved.
 - Hooks and scripts stay POSIX sh: the agent VMs have no Node. `bin/generate` avoids
   `$(cat <<HEREDOC)` because bash 3.2 (macOS `/bin/sh`) mis-parses it when the text holds an
   apostrophe.
-- Org-wide denials go in `permissions.deny` in `managed/settings.base.json`, not in hooks.
+- Org-wide denials go in `permissions.deny` in `managed/settings.base.json`, not in hooks. The one exception is
+  `hooks/d1-guard.sh` (#18, Raghav's call): rules match literal case-sensitive text and can't see SQL, so remote
+  D1 writes are denied by a `PreToolUse` hook. It runs only where the plugin is installed; keep the `d1 migrations
+  apply` and `--file` denials in `permissions.deny` too.
 - Keep `rules/org-rules.md` to about 40–60 lines: it is loaded into every Claude session.
 - Don't add a `version` to `plugin.json`; without it every commit on `main` is a release.
 - A change to the plugin hits every seat on merge; test it here first.

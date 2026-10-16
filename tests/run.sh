@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests for bin/generate, the session hook and bin/dependabot-policy. POSIX sh; needs jq for the generator tests.
+# Tests for bin/generate, the session and D1 guard hooks and bin/dependabot-policy. POSIX sh; needs jq for the generator tests.
 # Usage: tests/run.sh            (set SHELL_UNDER_TEST=dash or "busybox sh" to try other shells)
 set -eu
 
@@ -102,6 +102,66 @@ expect 0 "Version holds (setkernel org policy)" "the session hook prints the hol
   env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
 expect 0 "typescript-6.0" "the printed holds name each hold" -- \
   env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
+
+# The D1 guard (PreToolUse) denies remote D1 writes and remote --file runs; everything else passes (#18).
+guard=$root/plugins/setkernel/hooks/d1-guard.sh
+# hook <stdin-text>: feed the text to the guard on stdin.
+hook() { printf '%s' "$1" | run_sh "$guard"; }
+# bash_in <command>: the PreToolUse JSON for a Bash command.
+bash_in() { jq -nc --arg c "$1" '{tool_name: "Bash", tool_input: {command: $c}}'; }
+deny='"permissionDecision":"deny"'
+nl='
+'
+deny_cmd() { expect 0 "$deny" "the guard denies: $1" -- hook "$(bash_in "$1")"; }
+allow_cmd() { expect 0 '^$' "the guard allows: $1" -- hook "$(bash_in "$1")"; }
+for stmt in "INSERT INTO t VALUES (1)" "insert into t values (1)" "Insert  Into t values (1)" "INSERT OR REPLACE INTO t VALUES (1)" \
+  "REPLACE INTO t VALUES (1)" "UPDATE t SET a = 1" "update  t${nl}set a = 1" "DELETE FROM t" "delete${nl}from t" \
+  "DROP TABLE t" "drop  index i" "ALTER TABLE t ADD COLUMN c" "CREATE TABLE t (a)" "create unique index i on t(a)" \
+  "CREATE TEMP TABLE t (a)" "PRAGMA writable_schema = 1" "pragma  foreign_keys=off" "INSERT/**/INTO t VALUES (1)" \
+  "SELECT 1; DROP TABLE t" "delete /* a*b */ from t" "delete /* a ** b */ from t" "delete -- x${nl}from t" \
+  "delete --remote${nl}from t" "insert into t values (1) -- ok" "select 1 -- x${nl}; select 2" \
+  "VACUUM INTO 'x.db'" "vacuum main into 'x.db'" "ATTACH DATABASE 'x.db' AS x" "attach 'x.db' as x"; do
+  deny_cmd "wrangler d1 execute db --remote --command \"$stmt\""
+done
+deny_cmd 'wrangler d1 execute db --command "DELETE FROM t" --remote'
+deny_cmd "wrangler d1 execute db --remote --command \"select 1 -- done${nl}\"${nl}echo ok"
+deny_cmd "wrangler d1 execute db --remote --command 'select 1 -- done${nl}; select 2'"
+deny_cmd "wrangler d1 execute db --remote --command 'select 1 /* c */'"
+expect 0 "$deny" "the guard denies a write whose line breaks are escaped in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "select 1\nupdate t set a = 1"'
+expect 0 "$deny" "the guard denies a remote write after an escaped line break in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "x\ndelete\nfrom t"'
+# Known gaps, pinned so a change shows up: indirection hides the SQL from a text match.
+allow_cmd 'wrangler d1 execute db --remote --command "$SQL"'
+allow_cmd 'wrangler d1 execute db --remote --command "$(echo ZGVsZXRlIGZyb20gdA== | base64 -d)"'
+deny_cmd "wrangler d1 execute db --remote --command='DELETE FROM t'"
+deny_cmd 'npx wrangler d1 execute db --remote --command "drop table t"'
+deny_cmd 'pnpm exec wrangler d1 execute db --remote --command "drop table t"'
+deny_cmd 'cd app && npx wrangler --config wrangler.toml d1 execute db --remote --command "drop table t"'
+deny_cmd 'wrangler d1 execute db --remote --file schema.sql'
+deny_cmd 'wrangler d1 execute db --file=./q.sql --remote'
+deny_cmd 'npx wrangler d1 execute db --remote --file schema.sql'
+expect 0 "$deny" "the guard denies a remote D1 write inside a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "DROP TABLE t"'
+expect 0 '"hookEventName":"PreToolUse"' "the deny output names the PreToolUse event" -- hook "$(bash_in 'wrangler d1 execute db --remote --command "DROP TABLE t"')"
+allow_cmd 'wrangler d1 execute db --remote --command "SELECT * FROM users"'
+allow_cmd "wrangler d1 execute db --remote --command \"SELECT a,${nl}  b${nl}FROM t\""
+allow_cmd "wrangler d1 execute db --remote --command \"select 1\"${nl}echo -- done${nl}echo ok"
+allow_cmd "wrangler d1 execute db --remote \\${nl}  --command \"select 1\""
+allow_cmd 'wrangler d1 execute db --command "select * from t" --remote'
+allow_cmd 'wrangler d1 execute db --remote --command "SELECT updated_at, created_at FROM updates"'
+allow_cmd 'wrangler d1 execute db --remote --command "PRAGMA table_info(users)"'
+allow_cmd 'wrangler d1 execute db --remote --command "SELECT name FROM sqlite_master"'
+allow_cmd 'wrangler d1 execute update-db --remote --command "SELECT 1"'
+allow_cmd 'wrangler d1 execute db --local --command "DROP TABLE t"'
+allow_cmd 'wrangler d1 execute db --local --file schema.sql'
+allow_cmd 'wrangler d1 execute db --no-remote --command "DELETE FROM t"'
+allow_cmd "wrangler d1 execute db --remote \\${nl}  --command \"select 1\""
+allow_cmd 'wrangler d1 execute db --remote --command "select 1 -- just a read"'
+allow_cmd 'wrangler d1 list'
+allow_cmd 'wrangler d1 migrations apply db --local'
+allow_cmd 'git status'
+expect 0 '^$' "the guard allows a non-Bash tool" -- hook '{"tool_name":"Edit","tool_input":{"command":"wrangler d1 execute db --remote --command \"DROP TABLE t\""}}'
+expect 0 '^$' "the guard allows a payload with no command" -- hook '{"tool_name":"Bash","tool_input":{}}'
+expect 0 '^$' "the guard allows empty input" -- hook ''
+expect 0 '^$' "the guard allows unrelated malformed input" -- hook 'not json'
 
 # bin/dependabot-policy: writes the block, is idempotent, keeps the repo's own ignores, lifts cleanly.
 dp() { python3 "$root/bin/dependabot-policy" "$@"; }
