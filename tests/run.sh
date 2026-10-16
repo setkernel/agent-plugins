@@ -118,10 +118,19 @@ for stmt in "INSERT INTO t VALUES (1)" "insert into t values (1)" "Insert  Into 
   "REPLACE INTO t VALUES (1)" "UPDATE t SET a = 1" "update  t${nl}set a = 1" "DELETE FROM t" "delete${nl}from t" \
   "DROP TABLE t" "drop  index i" "ALTER TABLE t ADD COLUMN c" "CREATE TABLE t (a)" "create unique index i on t(a)" \
   "CREATE TEMP TABLE t (a)" "PRAGMA writable_schema = 1" "pragma  foreign_keys=off" "INSERT/**/INTO t VALUES (1)" \
-  "SELECT 1; DROP TABLE t"; do
+  "SELECT 1; DROP TABLE t" "delete /* a*b */ from t" "delete /* a ** b */ from t" "delete -- x${nl}from t" \
+  "delete --remote${nl}from t" "insert into t values (1) -- ok" "select 1 -- x${nl}; select 2" \
+  "VACUUM INTO 'x.db'" "vacuum main into 'x.db'" "ATTACH DATABASE 'x.db' AS x" "attach 'x.db' as x"; do
   deny_cmd "wrangler d1 execute db --remote --command \"$stmt\""
 done
 deny_cmd 'wrangler d1 execute db --command "DELETE FROM t" --remote'
+deny_cmd "wrangler d1 execute db --remote --command \"select 1\"${nl}echo -- done${nl}echo ok"
+deny_cmd "wrangler d1 execute db --remote --command 'select 1 /* c */'"
+expect 0 "$deny" "the guard denies a write whose line breaks are escaped in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "select 1\nupdate t set a = 1"'
+expect 0 "$deny" "the guard denies a remote write after an escaped line break in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "x\ndelete\nfrom t"'
+# Known gaps, pinned so a change shows up: indirection hides the SQL from a text match.
+allow_cmd 'wrangler d1 execute db --remote --command "$SQL"'
+allow_cmd 'wrangler d1 execute db --remote --command "$(echo ZGVsZXRlIGZyb20gdA== | base64 -d)"'
 deny_cmd "wrangler d1 execute db --remote --command='DELETE FROM t'"
 deny_cmd 'npx wrangler d1 execute db --remote --command "drop table t"'
 deny_cmd 'pnpm exec wrangler d1 execute db --remote --command "drop table t"'
@@ -140,6 +149,8 @@ allow_cmd 'wrangler d1 execute update-db --remote --command "SELECT 1"'
 allow_cmd 'wrangler d1 execute db --local --command "DROP TABLE t"'
 allow_cmd 'wrangler d1 execute db --local --file schema.sql'
 allow_cmd 'wrangler d1 execute db --no-remote --command "DELETE FROM t"'
+allow_cmd "wrangler d1 execute db --remote \\${nl}  --command \"select 1\""
+allow_cmd 'wrangler d1 execute db --remote --command "select 1 -- just a read"'
 allow_cmd 'wrangler d1 list'
 allow_cmd 'wrangler d1 migrations apply db --local'
 allow_cmd 'git status'
