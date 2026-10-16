@@ -12,7 +12,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | Path | What it is |
 | --- | --- |
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
-| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; a POSIX-shell `SessionStart` hook. `plugin.json` has no `version`, so every commit on `main` is a release. |
+| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` context and a `PreToolUse` guard that denies remote D1 writes. `plugin.json` has no `version`, so every commit on `main` is a release. |
 | `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
 | `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace, the enabled plugin, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
@@ -20,7 +20,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
 | `plugins/setkernel/policy/holds.md` | Generated. The holds as text; the plugin's SessionStart hook prints it into every Claude session. |
 | `bin/dependabot-policy` | Writes the holds into a repo's `.github/dependabot.yml` (`--check` for drift; `crosses` tells whether a version crosses a hold). Python 3, standard library only. |
-| `tests/run.sh` | Tests for the generator, the session hook and `bin/dependabot-policy`. |
+| `tests/run.sh` | Tests for the generator, the session and D1 guard hooks and `bin/dependabot-policy`. |
 
 In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `setkernel:reviewer`.
 
@@ -35,7 +35,7 @@ In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `set
 4. After merge, plugin changes reach every seat through auto-update. A change to
    `managed/settings.json` only takes effect when Raghav pastes it into the org console.
 
-Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`, not in hooks.
+Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`, not in hooks, except `hooks/d1-guard.sh`: it denies remote `wrangler d1 execute` statements that write or change the schema, which permission rules can't match (SQL keywords are case-insensitive and spacing varies). Remote `--file` runs and `d1 migrations apply` are denied in both places.
 
 ## Version holds
 
