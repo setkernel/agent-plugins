@@ -35,7 +35,7 @@ In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `set
 4. After merge, plugin changes reach every seat through auto-update. A change to
    `managed/settings.json` only takes effect when Raghav pastes it into the org console.
 
-Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`, not in hooks, except `hooks/d1-guard.sh`: it denies remote `wrangler d1 execute` statements that write or change the schema, which permission rules can't match (SQL keywords are case-insensitive and spacing varies). Remote `--file` runs and `d1 migrations apply` are denied in both places.
+Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`, not in hooks, except `hooks/d1-guard.sh`: it denies remote `wrangler d1 execute` statements that write or change the schema, which permission rules can't match (SQL keywords are case-insensitive and spacing varies). Remote `--file` runs are denied in both places; `d1 migrations apply` is denied only by `permissions.deny`, which matches the `wrangler` and `npx wrangler` prefixes.
 
 ## Version holds
 

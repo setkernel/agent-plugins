@@ -124,7 +124,8 @@ for stmt in "INSERT INTO t VALUES (1)" "insert into t values (1)" "Insert  Into 
   deny_cmd "wrangler d1 execute db --remote --command \"$stmt\""
 done
 deny_cmd 'wrangler d1 execute db --command "DELETE FROM t" --remote'
-deny_cmd "wrangler d1 execute db --remote --command \"select 1\"${nl}echo -- done${nl}echo ok"
+deny_cmd "wrangler d1 execute db --remote --command \"select 1 -- done${nl}\"${nl}echo ok"
+deny_cmd "wrangler d1 execute db --remote --command 'select 1 -- done${nl}; select 2'"
 deny_cmd "wrangler d1 execute db --remote --command 'select 1 /* c */'"
 expect 0 "$deny" "the guard denies a write whose line breaks are escaped in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "select 1\nupdate t set a = 1"'
 expect 0 "$deny" "the guard denies a remote write after an escaped line break in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "x\ndelete\nfrom t"'
@@ -141,6 +142,9 @@ deny_cmd 'npx wrangler d1 execute db --remote --file schema.sql'
 expect 0 "$deny" "the guard denies a remote D1 write inside a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "DROP TABLE t"'
 expect 0 '"hookEventName":"PreToolUse"' "the deny output names the PreToolUse event" -- hook "$(bash_in 'wrangler d1 execute db --remote --command "DROP TABLE t"')"
 allow_cmd 'wrangler d1 execute db --remote --command "SELECT * FROM users"'
+allow_cmd "wrangler d1 execute db --remote --command \"SELECT a,${nl}  b${nl}FROM t\""
+allow_cmd "wrangler d1 execute db --remote --command \"select 1\"${nl}echo -- done${nl}echo ok"
+allow_cmd "wrangler d1 execute db --remote \\${nl}  --command \"select 1\""
 allow_cmd 'wrangler d1 execute db --command "select * from t" --remote'
 allow_cmd 'wrangler d1 execute db --remote --command "SELECT updated_at, created_at FROM updates"'
 allow_cmd 'wrangler d1 execute db --remote --command "PRAGMA table_info(users)"'
