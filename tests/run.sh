@@ -83,6 +83,18 @@ expect 0 "carve-outs last" "each carve-out follows the denials it opens" -- \
     | ([.[] | select(.carve) | .key] | min) as $first | ([.[] | select(.carve | not) | .key] | max) as $last
     | if $first > $last then "carve-outs last" else "a carve-out at \($first) comes before a denial at \($last)", false end'
 
+# The reviewer blocks PR bodies that ask the owner to hand-create tokens or paste secrets (#27).
+# A static check: the prompt names the triggers and pointers, the bad fixture hits a trigger, the good one hits none.
+reviewer=$root/plugins/setkernel/agents/reviewer.md
+for marker in 'create an API token' 'paste a value into Infisical' 'dashboard → API Tokens' 'Credentials for a repo' \
+  'scripts/infisical-repo-projects.py' 'scripts/infisical-put.py' 'stacks/services/api_tokens.tf' 'gh pr view'; do
+  expect 0 "$marker" "the reviewer prompt names $marker" -- cat "$reviewer"
+done
+expect 0 "gh pr view" "review-blockers passes the PR body to the reviewer" -- cat "$root/plugins/setkernel/skills/review-blockers/SKILL.md"
+ask='create an? (Cloudflare )?API token|paste.* into Infisical|dashboard → API Tokens'
+expect 0 "API Tokens" "the bad fixture asks the owner to create and paste a token" -- grep -E "$ask" "$root/tests/fixtures/pr-bad.md"
+expect 1 "" "the good fixture (token as code, piped by script) triggers nothing" -- grep -E "$ask" "$root/tests/fixtures/pr-good.md"
+
 # The session hook prints the git state and the version holds.
 hookrepo=$tmp/hookrepo
 mkdir -p "$hookrepo" && git -C "$hookrepo" init -q
