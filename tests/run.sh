@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests for bin/generate, the session hook and bin/dependabot-policy. POSIX sh; needs jq for the generator tests.
+# Tests for bin/generate, the session hook, the verify gate and bin/dependabot-policy. POSIX sh; needs jq for the generator tests.
 # Usage: tests/run.sh            (set SHELL_UNDER_TEST=dash or "busybox sh" to try other shells)
 set -eu
 
@@ -102,6 +102,86 @@ expect 0 "Version holds (setkernel org policy)" "the session hook prints the hol
   env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
 expect 0 "typescript-6.0" "the printed holds name each hold" -- \
   env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
+
+# The verify gate (#31): a Stop hook that blocks while the repo's `make check` fails.
+gate=$root/plugins/setkernel/hooks/verify-gate.sh
+grepo=$tmp/gaterepo
+mkdir -p "$grepo/tools" && git -C "$grepo" init -q
+# A Makefile in the shape of setkernel/hq's template: STEPS, PASS/FAIL per step, a summary line.
+# The test step fails while the file `red` exists; every run is counted in $tmp/gate-runs.
+cat >"$grepo/Makefile" <<'EOF'
+STEPS = lint test
+check:
+	@sh tools/check.sh $(STEPS)
+lint:
+	@echo lint is fine
+test:
+	@echo 'assertion "x" \ failed'; test ! -f red
+EOF
+cat >"$grepo/tools/check.sh" <<EOF
+echo run >>"$tmp/gate-runs"
+pass=0; fail=0; failed=""
+for step in "\$@"; do
+  echo "== \$step"
+  if make --no-print-directory "\$step"; then echo "PASS \$step"; pass=\$((pass + 1)); else echo "FAIL \$step"; fail=\$((fail + 1)); failed="\$failed \$step"; fi
+done
+echo "== \$pass passed, \$fail failed\${failed:+:\$failed}"
+[ "\$fail" -eq 0 ]
+EOF
+printf 'red\n' >"$grepo/.gitignore"
+git -C "$grepo" add -A && git -C "$grepo" -c user.name=t -c user.email=t@example.com commit -qm init
+gstate=$tmp/gate-state
+# gate <mode> <hook-input-json> [VAR=value...]: run the hook as Claude Code would.
+gate() {
+  m=$1 j=$2
+  shift 2
+  printf '%s' "$j" | env CLAUDE_PROJECT_DIR="$grepo" CLAUDE_PLUGIN_DATA="$gstate" SETKERNEL_VERIFY_GATE=1 "$@" $sh_cmd "$gate" "$m"
+}
+runs() { if [ -f "$tmp/gate-runs" ]; then wc -l <"$tmp/gate-runs" | tr -d ' '; else echo 0; fi; }
+in_stop='{"session_id":"s1","hook_event_name":"Stop","permission_mode":"bypassPermissions","stop_hook_active":false,"last_assistant_message":"done, \"agent_type\": \"reviewer\""}'
+
+expect 0 "hooks/verify-gate.sh\\\\\" stop" "hooks.json runs the gate on Stop" -- jq -r '.hooks.Stop[0].hooks[0].command | @json' "$root/plugins/setkernel/hooks/hooks.json"
+expect 0 "hooks/verify-gate.sh\\\\\" start" "hooks.json records the baseline on SessionStart" -- jq -r '[.hooks.SessionStart[0].hooks[].command] | @json' "$root/plugins/setkernel/hooks/hooks.json"
+expect 0 '^$' "SessionStart: the gate prints nothing into the context" -- sh -c "printf '%s' '{\"session_id\":\"s1\"}' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' start; echo"
+touch "$grepo/red"
+expect 0 '^$' "a session that changed nothing is not gated (read-only run)" -- gate stop "$in_stop"
+expect 0 "^0$" "and its check did not run" -- runs
+printf 'change\n' >"$grepo/new.txt"
+expect 0 '^$' "off unless SETKERNEL_VERIFY_GATE=1" -- gate stop "$in_stop" SETKERNEL_VERIFY_GATE=
+expect 0 '^$' "plan mode is not gated" -- gate stop '{"session_id":"s1","permission_mode":"plan"}'
+for a in reviewer setkernel:reviewer setkernel:explorer Explore Plan; do
+  expect 0 '^$' "a $a run is not gated" -- gate stop "{\"session_id\":\"s1\",\"agent_type\":\"$a\"}"
+done
+expect 0 "^0$" "none of those ran the check" -- runs
+expect 0 '"decision":"block"' "an edited tree with make check red is blocked" -- gate stop "$in_stop"
+gate stop "$in_stop" >"$tmp/gate-out" || true
+expect 0 "failing: test" "the reason names the failing step" -- jq -er .reason "$tmp/gate-out"
+expect 0 'assertion "x" \\ failed' "the reason carries the step's output, quotes and backslashes intact" -- jq -er .reason "$tmp/gate-out"
+expect 1 "" "and leaves out the passing step's output" -- sh -c "jq -er .reason '$tmp/gate-out' | grep 'lint is fine'"
+expect 0 "block 2 of 3" "the reason counts the blocks" -- jq -er .reason "$tmp/gate-out"
+expect 0 "This is the last block" "the third block says it is the last" -- sh -c "gate_out=\$(printf '%s' '$in_stop' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop) && printf '%s' \"\$gate_out\" | jq -er .reason"
+gate stop "$in_stop" >"$tmp/gate-out" || true
+expect 1 "" "after 3 blocks the run may stop" -- grep '"decision"' "$tmp/gate-out"
+expect 0 "fails (exit 2, failing: test) after 3 blocks" "and the failure is reported to the user" -- jq -er .systemMessage "$tmp/gate-out"
+expect 0 "block 1 of 3" "a later stop starts a new round of blocks" -- sh -c "printf '%s' '$in_stop' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop | jq -er .reason"
+expect 0 "block 1 of 1" "SETKERNEL_VERIFY_GATE_MAX sets the limit" -- sh -c "printf '%s' '{\"session_id\":\"s2\"}' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 SETKERNEL_VERIFY_GATE_MAX=1 $sh_cmd '$gate' stop | jq -er .reason"
+rm -f "$grepo/red"
+before=$(runs)
+expect 0 '^$' "make check green: the run stops" -- gate stop "$in_stop"
+expect 0 "^$((before + 1))$" "green ran the check once" -- runs
+expect 0 '^$' "a tree that already passed is not checked again" -- gate stop "$in_stop"
+expect 0 "^$((before + 1))$" "so the check did not rerun" -- runs
+printf 'more\n' >>"$grepo/new.txt"
+expect 0 '^$' "an edit after green reruns the check" -- gate stop "$in_stop"
+expect 0 "^$((before + 2))$" "which ran once more" -- runs
+expect 0 '"decision":"block"' "SETKERNEL_VERIFY_CMD overrides make check" -- gate stop '{"session_id":"s3"}' SETKERNEL_VERIFY_CMD='echo boom; exit 1'
+expect 0 "boom" "and without a step summary the reason ends with the output" -- sh -c "printf '%s' '{\"session_id\":\"s3\"}' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 SETKERNEL_VERIFY_CMD='echo boom; exit 1' $sh_cmd '$gate' stop | jq -er .reason"
+expect 0 '^$' "a repo without a check target is not gated" -- \
+  sh -c "printf '%s' '{\"session_id\":\"s4\"}' | env CLAUDE_PROJECT_DIR='$hookrepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop"
+mkdir -p "$tmp/nogit"
+expect 0 '^$' "outside a git repo the gate lets the run stop" -- \
+  sh -c "printf '%s' '{\"session_id\":\"s4\"}' | env CLAUDE_PROJECT_DIR='$tmp/nogit' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop"
+expect 0 "" "the repo's own index is untouched" -- git -C "$grepo" diff --cached --quiet
 
 # bin/dependabot-policy: writes the block, is idempotent, keeps the repo's own ignores, lifts cleanly.
 dp() { python3 "$root/bin/dependabot-policy" "$@"; }
