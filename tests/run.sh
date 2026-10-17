@@ -74,6 +74,18 @@ expect 0 "none missing" "every wrangler denial has an npx wrangler twin" -- \
   deny_jq "[\$d[] | select(startswith(\"Bash(wrangler \")) | \"Bash(npx \" + .[5:]] - \$d | $missing"
 expect 0 "none missing" "remote D1 migrations and remote --file runs are denied" -- \
   deny_jq "[\"Bash(wrangler d1 migrations apply:*)\", \"Bash(wrangler d1 execute *--remote*--file*)\", \"Bash(wrangler d1 execute *--file*--remote*)\"] - \$d | $missing"
+expect 0 "none missing" "force-push is denied in every spelling, with the flag first or after the remote, and as +refspec" -- \
+  deny_jq "[\"Bash(git push --force*)\", \"Bash(git push * --force*)\", \"Bash(git push -f*)\", \"Bash(git push * -f*)\", \"Bash(git push -uf*)\", \"Bash(git push * -uf*)\", \"Bash(git push * +*)\"] - \$d | $missing"
+expect 0 "^0$" "the old force-push rules (blind to --force-with-lease) are gone" -- \
+  deny_jq "[\$d[] | select(. == \"Bash(git push --force:*)\" or . == \"Bash(git push -f:*)\")] | length"
+expect 0 "none missing" "git reset --hard and git clean are denied" -- \
+  deny_jq "[\"Bash(git reset --hard*)\", \"Bash(git reset * --hard*)\", \"Bash(git clean:*)\"] - \$d | $missing"
+expect 0 "none missing" "forced branch deletes are denied in every spelling" -- \
+  deny_jq "[\"Bash(git branch -D:*)\", \"Bash(git branch * -D*)\", \"Bash(git branch --delete*--force*)\", \"Bash(git branch --force*--delete*)\", \"Bash(git branch -d -f*)\", \"Bash(git branch -f -d*)\", \"Bash(git branch -fd*)\", \"Bash(git branch -df*)\"] - \$d | $missing"
+expect 0 "^0$" "the safe git branch -d stays open" -- \
+  deny_jq "[\$d[] | select(startswith(\"Bash(git branch -d\") and (startswith(\"Bash(git branch -d -f\") or startswith(\"Bash(git branch -df\") | not))] | length"
+expect 0 "none missing" "npm publish and gh release create are denied" -- \
+  deny_jq "[\"Bash(npm publish:*)\", \"Bash(gh release create:*)\"] - \$d | $missing"
 expect 0 "none missing" ".dev.vars.* is denied and the example files are carved out" -- \
   deny_jq "[\"Read(./.dev.vars.*)\", \"Read(!.env.example)\", \"Read(!.dev.vars.example)\"] - \$d | $missing"
 expect 0 "none missing" "keys and certificates are denied at any depth" -- \
