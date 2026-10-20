@@ -278,6 +278,7 @@ expect 1 "" "a hold only applies to its ecosystem" -- dp crosses github-actions 
 skill=$root/plugins/setkernel/skills/verify/SKILL.md
 expect 0 "run \`make check\`" "the verify skill runs make check when the repo has the target" -- grep -F 'run `make check`' "$skill"
 expect 0 "needs Docker (or OrbStack)" "the verify skill reports a Docker-less run as not run" -- grep -F 'needs Docker (or OrbStack)' "$skill"
+expect 0 "Steps 3 and 4 apply either way" "the verify skill keeps the grep and setup steps with a check target" -- grep -F 'Steps 3 and 4 apply either way' "$skill"
 
 echo "$((n - failures))/$n passed"
 [ "$failures" -eq 0 ]
