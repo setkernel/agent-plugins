@@ -12,7 +12,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | Path | What it is |
 | --- | --- |
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
-| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` (session context) and the git guard (`PreToolUse` on Bash, see below). `plugin.json` has no `version`, so every commit on `main` is a release. |
+| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context, the git guard (`PreToolUse` on Bash, see below) and the opt-in `Stop` verify gate. `plugin.json` has no `version`, so every commit on `main` is a release. |
 | `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
 | `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace and the only marketplace source allowed (`strictKnownMarketplaces`), the enabled plugin, org-only hooks (`allowManagedHooksOnly`), login, update and retention policy, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
@@ -20,7 +20,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
 | `plugins/setkernel/policy/holds.md` | Generated. The holds as text; the plugin's SessionStart hook prints it into every Claude session. |
 | `bin/dependabot-policy` | Writes the holds into a repo's `.github/dependabot.yml` (`--check` for drift; `crosses` tells whether a version crosses a hold). Python 3, standard library only. |
-| `tests/run.sh` | Tests for the generator, the session hook and `bin/dependabot-policy`. |
+| `tests/run.sh` | Tests for the generator, the session hook, the verify gate and `bin/dependabot-policy`. |
 
 In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `setkernel:reviewer`.
 
@@ -71,6 +71,27 @@ mode as `--permission-mode auto --permission-prompts none` in place of
 `--dangerously-skip-permissions`, and `autoMode.environment` plus a deny on pushing to `main`
 (auto mode otherwise allows a push to any branch of the working repo).
 
+### What this guards on a push to `main`, and what it can't
+Platform probes (setkernel/hq#220, 2026-10-16 and 10-17; decision 0007's amendment, hq#259) show
+that managed deny rules do not guard pushes to `main`, and that Claude's cloud sessions (Anthropic-
+hosted and the self-hosted runner) push to `main` as the GitHub user `claude` through the platform's
+git proxy, with the creator's access and no branch restriction. So:
+- **Guarded here:** a push to the default branch from a local session or agent VM where this plugin's
+  hook runs (the git guard) and `permissions.deny` applies. Both are speed bumps (below).
+- **Not guarded here:** cloud sessions, and anything that doesn't run this plugin's `PreToolUse`
+  hook. Keeping `main` safe there takes GitHub branch protection or rulesets on `main`, which don't
+  depend on the client, not this repo. agent-plugins#23 therefore promises no main-branch guard
+  beyond the local one.
+
+### Do these settings reach the agent VMs?
+Unconfirmed. On 2026-10-20 the VMs' `~/.claude/remote-settings.json` was 0 bytes (2 on one VM) and
+none has `/etc/claude-code/managed-settings.json` (setkernel/hq#314). Until that issue shows a
+managed deny rule blocking on a VM, assume `managed/settings.json` (deny rules, `allowManagedHooksOnly`,
+the version pin) does **not** reach them, and that a VM gets this plugin's hooks only if it installs
+the plugin itself. If the cache turns out to be empty, the fix is hq#314's: a login type that
+receives managed settings, or installing `managed/settings.json` as
+`/etc/claude-code/managed-settings.json`.
+
 These are a speed bump against mistakes, not the security boundary. Bash rules and the guard match
 command text, so a script, `/usr/bin/git`, a variable or `python -c` still gets past them, and
 `Read` rules don't stop a program that opens the file itself
@@ -107,6 +128,21 @@ python3 bin/dependabot-policy --check /path/to/repo   # exit 1 and a diff when s
 python3 bin/dependabot-policy /path/to/repo           # write it
 python3 bin/dependabot-policy crosses npm typescript 7.0.2   # prints typescript-6.0, exit 0
 ```
+
+## The verify gate (Stop hook)
+
+`hooks/verify-gate.sh` keeps a run from finishing while the repo's check fails (setkernel/agent-plugins#31).
+It is off unless `SETKERNEL_VERIFY_GATE=1` is set in the session's environment, so it can be
+canaried on one VM before it reaches every seat.
+
+- On Stop it runs `make check` (or `SETKERNEL_VERIFY_CMD`) and, while it fails, blocks with the
+  failing steps and their last output lines as the reason. No `check` target: nothing to gate.
+- It blocks at most `SETKERNEL_VERIFY_GATE_MAX` times (3) in a row, then lets the run stop and
+  shows the failure; a green check resets the count.
+- It skips read-only runs: plan mode, the `explorer`, `reviewer`, `Explore` and `Plan` agents, and a
+  session whose tree (untracked files included) is unchanged since SessionStart. A tree that
+  already passed is not checked again.
+- State (baseline, last green tree, block count, last log) lives in `CLAUDE_PLUGIN_DATA`.
 
 ## Try the plugin locally
 

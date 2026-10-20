@@ -5,7 +5,7 @@ description: Review the current branch for merge blockers only, using the setker
 1. Make sure the branch is committed and up to date with the default branch (`git fetch`, then
    compare with `origin/HEAD`).
 2. Delegate to the `setkernel:reviewer` subagent: "Review this branch against the default branch.
-   Merge blockers only, with file, line, why, and how to reproduce."
+   Merge blockers only, with file, line, why, and how to reproduce. Include the PR body (`gh pr view`), not just the diff."
 3. Check each reported blocker yourself before passing it on (open the file, run the repro).
    Drop any you can't confirm and say so.
 4. Reply with: **Blockers** (confirmed), **Not confirmed**, **Checks** (the `verify` results).
