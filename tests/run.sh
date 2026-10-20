@@ -69,6 +69,9 @@ expect 0 "true" "claude.ai skills do not sync" -- settings_key ".syncClaudeAiSki
 expect 0 "true" "claude.ai plugins do not sync" -- settings_key ".syncClaudeAiPlugins == false"
 expect 0 "true" "managed mods only" -- settings_key '.pluginConfigs["cc-plugin-sec-default@builtin"].options.allowManagedModsOnly'
 expect 0 '"1"' "managed settings are logged to OTEL" -- settings_key .env.OTEL_LOG_MANAGED_SETTINGS
+for c in "tofu apply" "tofu destroy" "gh workflow run" "wrangler secret"; do
+  expect 0 "true" "$c is denied" -- settings_key ".permissions.deny | index(\"Bash($c*)\") != null"
+done
 expect 0 "true" "gh pr merge is denied" -- settings_key '.permissions.deny | index("Bash(gh pr merge*)") != null'
 
 # The org rules load into every session: keep them to the README's 40–60 lines (#23).
@@ -247,6 +250,11 @@ git -C . push -f origin feat
 git -c push.default=current --no-pager push --force
 env GIT_TRACE=0 git push --force
 sh -c "git push -f origin feat"
+sudo -u root git push -f origin feat
+env -u VAR git push -f origin feat
+sudo -u root git push origin main
+nice -n 5 git reset --hard
+timeout -s KILL 5 git push --force
 cd sub && git push origin feat -f
 echo "$(git push --mirror)"
 git push origin main

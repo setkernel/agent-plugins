@@ -61,6 +61,17 @@ git guard covers only the git commands a text rule can't pin down.
   --cask claude-code@latest`). There is no `requiredMaximumVersion` yet: no Claude Code hold
   exists, so Raghav sets one if he wants it.
 - **`gh pr merge`** is denied for everyone, humans' Macs included, so merging goes through the web UI.
+- **`tofu apply`, `tofu destroy`, `gh workflow run` and `wrangler secret`** are denied too (also on
+  the humans' Macs). Like every Bash rule they match the command text only: a compound command
+  (`cd infra && tofu apply`) is matched per segment, but a script, a variable or `bash -c` that runs
+  them is not.
+- **`pnpm deploy*`** is denied, which also blocks pnpm's built-in `pnpm deploy` (copying a workspace
+  package, used in Docker builds).
+- **To verify that policy reached a seat**, `OTEL_LOG_MANAGED_SETTINGS=1` (set in `env`) makes Claude
+  Code log the managed settings it loaded; check that log. A denied command run in a session is the
+  second check. This is the way to verify delivery on a VM (hq#314).
+- The git guard splits command lines on newlines too, so a multi-line commit message, PR body or
+  heredoc with a line that starts `git reset --hard` or `git clean -f` is blocked: reword the line.
 
 ### Locks that belong in the VM policy file, not here
 The console can't target groups, so anything placed there also binds the humans' Macs. These go in

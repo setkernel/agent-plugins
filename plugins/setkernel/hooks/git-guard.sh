@@ -78,6 +78,8 @@ check_cmd() {
 }
 
 # check_words <word…>: skip assignments and wrappers (env, sudo, sh -c, xargs, …), then check git.
+# Wrapper options that take a value are skipped for sudo -u/-g/-h, env -u/-C, nice -n, timeout -s/-k
+# and stdbuf -i/-o/-e; other wrappers' value options are not known and can get past the guard.
 # A cd or pushd moves the directory later segments read the branch and aliases from.
 check_words() {
   while [ $# -gt 0 ]; do
@@ -85,8 +87,12 @@ check_words() {
       [A-Za-z_]*=*) shift ;;
       env | sudo | command | builtin | exec | nohup | time | nice | stdbuf | noglob | xargs | timeout | eval | \
         sh | bash | zsh | dash | ksh | then | do | else | if | while | until | !)
+        w=$1
         shift
         while [ $# -gt 0 ]; do
+          case $w:$1 in # options that take a value: skip it too, or it reads as the command
+            sudo:-[ughpCDRTU] | env:-[uC] | nice:-n | timeout:-[sk] | stdbuf:-[ioe]) [ $# -ge 2 ] && shift 2 && continue ;;
+          esac
           case $1 in -* | [0-9]*) shift ;; *) break ;; esac
         done
         ;;
