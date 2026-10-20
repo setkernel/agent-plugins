@@ -10,6 +10,10 @@ that tree, with its exact result.
 
 ## Find the checks
 
+0. If the repo root has a `check` target (the first of `GNUmakefile`, `makefile`, `Makefile` that
+   exists, with a line matching `^check[[:space:]]*:`), run `make check` and use it instead of
+   reading the workflows and running steps yourself: it runs every check CI runs. Report its
+   per-step PASS/FAIL lines and its final count. Without a `check` target, continue below.
 1. Read the "Commands" section of the root `AGENTS.md` (and any area `AGENTS.md` for the files you
    touched), then the CI workflow(s) in `.github/workflows/`.
 2. While iterating, run the smallest set of checks that can catch what the change could break.
@@ -28,7 +32,8 @@ that tree, with its exact result.
 - On a failure: the failing test or step, the assertion, the first relevant error lines and the
   `file:line` they point to.
 - A step that cannot run here (needs a secret, a service, the house LAN) is "not run" with the
-  reason, never "passed". A sandbox refusal is not a code failure: rerun outside it and record both.
+  reason, never "passed". `make check` exiting 2 with "needs Docker (or OrbStack)" is "not run"
+  for that reason. Any other non-zero exit is a failure: report it as above. A sandbox refusal is not a code failure: rerun outside it and record both.
 
 ## Flaky or real
 
