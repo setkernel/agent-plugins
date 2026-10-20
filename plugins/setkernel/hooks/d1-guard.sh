@@ -26,10 +26,11 @@ if [ $? -ne 0 ]; then
 /g')
 fi
 
-# Lower case, `\r` and tabs as spaces. `lines` keeps its line breaks; `text` is one line, so spacing
-# and line breaks can't split a phrase.
+# Lower case, `\r` and tabs as spaces. `lines` keeps its line breaks; `text` is one line, with line
+# breaks and backslashes as spaces (the shell drops a backslash before a line break inside double
+# quotes), so spacing and line breaks can't split a phrase.
 lines=$(printf '%s' "$cmd" | tr '\r\t' '  ' | tr 'A-Z' 'a-z')
-text=$(printf '%s' "$lines" | tr '\n' ' ')
+text=$(printf '%s' "$lines" | tr '\n\\' '  ')
 
 # Not a remote D1 statement: nothing to say.
 printf '%s' "$text" | grep -Eq 'wrangler.*[[:space:]]d1[[:space:]]+execute' || exit 0
@@ -48,10 +49,10 @@ printf '%s' "$text" | grep -Fq -- '/*' &&
 printf '%s\n' "$lines" | awk -v raw="$raw" '
   { all = all $0 "\n" }
   END {
-    q = raw ? "r" : ""; dash = 0; n = length(all)
+    q = raw ? "raw" : ""; dash = 0; n = length(all)
     for (i = 1; i <= n; i++) {
       c = substr(all, i, 1)
-      if (c == "\\" && q != "r" && q != "\047") { i++; continue }
+      if (c == "\\" && q != "raw" && q != "\047") { i++; continue }
       if (c == "\n") { if (q != "" && dash) exit 1; dash = 0; continue }
       if (q == "") { if (c == "\047" || c == "\"") q = c; continue }
       if (c == q) { q = ""; dash = 0; continue }

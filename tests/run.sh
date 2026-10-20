@@ -120,6 +120,7 @@ for stmt in "INSERT INTO t VALUES (1)" "insert into t values (1)" "Insert  Into 
   "CREATE TEMP TABLE t (a)" "PRAGMA writable_schema = 1" "pragma  foreign_keys=off" "INSERT/**/INTO t VALUES (1)" \
   "SELECT 1; DROP TABLE t" "delete /* a*b */ from t" "delete /* a ** b */ from t" "delete -- x${nl}from t" \
   "delete --remote${nl}from t" "insert into t values (1) -- ok" "select 1 -- x${nl}; select 2" \
+  "delete \\${nl}from t" "drop \\${nl}table t" "insert \\${nl}into t values (1)" \
   "VACUUM INTO 'x.db'" "vacuum main into 'x.db'" "ATTACH DATABASE 'x.db' AS x" "attach 'x.db' as x"; do
   deny_cmd "wrangler d1 execute db --remote --command \"$stmt\""
 done
@@ -129,6 +130,7 @@ deny_cmd "wrangler d1 execute db --remote --command 'select 1 -- done${nl}; sele
 deny_cmd "wrangler d1 execute db --remote --command 'select 1 /* c */'"
 expect 0 "$deny" "the guard denies a write whose line breaks are escaped in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "select 1\nupdate t set a = 1"'
 expect 0 "$deny" "the guard denies a remote write after an escaped line break in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "x\ndelete\nfrom t"'
+expect 0 "$deny" "the guard denies a -- comment that splits a write in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "delete -- x\nfrom t"'
 # Known gaps, pinned so a change shows up: indirection hides the SQL from a text match.
 allow_cmd 'wrangler d1 execute db --remote --command "$SQL"'
 allow_cmd 'wrangler d1 execute db --remote --command "$(echo ZGVsZXRlIGZyb20gdA== | base64 -d)"'
