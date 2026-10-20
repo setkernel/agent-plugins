@@ -138,6 +138,12 @@ git push origin +main
 git -C /srv/repo push -f
 git -C . push origin feat --force-with-lease
 git -c push.default=current push +HEAD
+tofu apply
+tofu -chdir=infra apply
+tofu -chdir=infra destroy -auto-approve
+gh workflow run x.yml
+gh -R o/r workflow run x.yml
+npx wrangler secret put X
 wrangler deploy
 npx wrangler deploy
 npx --yes wrangler deploy --env production
@@ -169,6 +175,9 @@ git push -u origin agent/23-harden-fix
 git push origin my-feature-fix --follow-tags
 git status
 git commit -m "fix: force the lease"
+tofu plan
+tofu -chdir=infra plan
+gh workflow list
 wrangler dev
 wrangler deployments list
 npx wrangler d1 execute DB --local --file seed.sql
