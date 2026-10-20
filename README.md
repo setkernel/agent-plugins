@@ -12,7 +12,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | Path | What it is |
 | --- | --- |
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
-| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` context and a `PreToolUse` guard that denies remote D1 writes. `plugin.json` has no `version`, so every commit on `main` is a release. |
+| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context, the opt-in `Stop` verify gate, and a `PreToolUse` guard that denies remote D1 writes (always on: it has no env switch). `plugin.json` has no `version`, so every commit on `main` is a release. |
 | `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
 | `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace, the enabled plugin, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
@@ -20,7 +20,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
 | `plugins/setkernel/policy/holds.md` | Generated. The holds as text; the plugin's SessionStart hook prints it into every Claude session. |
 | `bin/dependabot-policy` | Writes the holds into a repo's `.github/dependabot.yml` (`--check` for drift; `crosses` tells whether a version crosses a hold). Python 3, standard library only. |
-| `tests/run.sh` | Tests for the generator, the session and D1 guard hooks and `bin/dependabot-policy`. |
+| `tests/run.sh` | Tests for the generator, the session hook, the verify gate, the D1 guard and `bin/dependabot-policy`. |
 
 In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `setkernel:reviewer`.
 
@@ -35,7 +35,7 @@ In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `set
 4. After merge, plugin changes reach every seat through auto-update. A change to
    `managed/settings.json` only takes effect when Raghav pastes it into the org console.
 
-Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`, not in hooks, except `hooks/d1-guard.sh`: it denies remote `wrangler d1 execute` statements that write or change the schema, which permission rules can't match (SQL keywords are case-insensitive and spacing varies). Remote `--file` runs are denied in both places; `d1 migrations apply` is denied only by `permissions.deny`, which matches the `wrangler` and `npx wrangler` prefixes.
+Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`, not in hooks, except `hooks/d1-guard.sh`: it denies remote `wrangler d1 execute` statements that write or change the schema, which permission rules can't match (SQL keywords are case-insensitive and spacing varies). Remote `--file` runs are denied in both places; `d1 migrations apply` is denied only by `permissions.deny`, which matches the `wrangler` and `npx wrangler` prefixes. Unlike the verify gate, the D1 guard has no env switch: once merged it applies to Bash on every seat with the plugin.
 
 ## Version holds
 
@@ -67,6 +67,21 @@ python3 bin/dependabot-policy --check /path/to/repo   # exit 1 and a diff when s
 python3 bin/dependabot-policy /path/to/repo           # write it
 python3 bin/dependabot-policy crosses npm typescript 7.0.2   # prints typescript-6.0, exit 0
 ```
+
+## The verify gate (Stop hook)
+
+`hooks/verify-gate.sh` keeps a run from finishing while the repo's check fails (setkernel/agent-plugins#31).
+It is off unless `SETKERNEL_VERIFY_GATE=1` is set in the session's environment, so it can be
+canaried on one VM before it reaches every seat.
+
+- On Stop it runs `make check` (or `SETKERNEL_VERIFY_CMD`) and, while it fails, blocks with the
+  failing steps and their last output lines as the reason. No `check` target: nothing to gate.
+- It blocks at most `SETKERNEL_VERIFY_GATE_MAX` times (3) in a row, then lets the run stop and
+  shows the failure; a green check resets the count.
+- It skips read-only runs: plan mode, the `explorer`, `reviewer`, `Explore` and `Plan` agents, and a
+  session whose tree (untracked files included) is unchanged since SessionStart. A tree that
+  already passed is not checked again.
+- State (baseline, last green tree, block count, last log) lives in `CLAUDE_PLUGIN_DATA`.
 
 ## Try the plugin locally
 

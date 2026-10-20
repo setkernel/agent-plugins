@@ -31,14 +31,15 @@ the Claude org console. No secrets or Infisical values are involved.
 
 ## Layout
 - `plugins/setkernel/`: the plugin: `skills/` (`verify`, `review-blockers`, `ship-pr`), `agents/`
-  (`explorer`, `reviewer`), `hooks/` (POSIX-sh: the `SessionStart` context hook and the `PreToolUse` D1 guard).
+  (`explorer`, `reviewer`), `hooks/` (POSIX sh: the `SessionStart` context hook, the opt-in `Stop` verify gate and the
+  always-on `PreToolUse` D1 guard).
 - `.claude-plugin/marketplace.json`: the `setkernel` marketplace; lists the one plugin.
 - `rules/org-rules.md`: the one source of the org rules (becomes `claudeMd` in managed settings).
 - `managed/settings.base.json`: hand-edited part of the managed settings (`permissions.deny`,
   marketplace, enabled plugin).
 - `bin/generate`: builds the generated files below from those sources.
 - `bin/dependabot-policy`: writes the version holds into a repo's `dependabot.yml`.
-- `tests/run.sh`: tests for the generator, the session and D1 guard hooks and `bin/dependabot-policy`.
+- `tests/run.sh`: tests for the generator, the session hook, the verify gate, the D1 guard and `bin/dependabot-policy`.
 
 ## Traps and don't-touch
 - Generated, never edit by hand: `managed/settings.json` and `plugins/setkernel/policy/holds.md`.
