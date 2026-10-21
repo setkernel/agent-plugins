@@ -41,6 +41,11 @@ expect 1 "stale: managed/settings.json" "a rules edit without regenerating is dr
 expect 0 "wrote managed/settings.json" "regenerating writes the settings" -- run_sh "$tmp/copy/bin/generate"
 expect 0 "generated files are current" "after regenerating there is no drift" -- run_sh "$tmp/copy/bin/generate" --check
 expect 0 "One more rule.\"" "claudeMd carries the new rule" -- jq .claudeMd "$tmp/copy/managed/settings.json"
+# A forceLoginOrgUUID placeholder never reaches the pasted file; a filled-in UUID does.
+expect 1 "" "managed/settings.json holds no REPLACE_WITH_ placeholder" -- grep -q REPLACE_WITH_ "$root/managed/settings.json"
+jq '.forceLoginOrgUUID = "00000000-0000-0000-0000-000000000000"' "$root/managed/settings.base.json" >"$tmp/copy/managed/settings.base.json"
+expect 0 "wrote managed/settings.json" "a filled-in org UUID regenerates the settings" -- run_sh "$tmp/copy/bin/generate"
+expect 0 "00000000-0000-0000-0000-000000000000" "the filled-in org UUID is in the settings" -- jq -r .forceLoginOrgUUID "$tmp/copy/managed/settings.json"
 
 # The committed org rules give each Claude environment its branch prefix and signature (#16).
 for marker in '`raghav-dev/<topic>`, `— raghav-dev`' '`claude/<topic>`, `— Claude Cloud`' '`lead/<topic>`, `— Claude Lead`' '`agent/<issue>-<slug>`'; do
@@ -52,6 +57,25 @@ for marker in '## Fonts' 'self-hosted' '`fonts.googleapis.com`' '`FONTCONFIG_FIL
   expect 0 "$marker" "claudeMd's Fonts names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
 done
 
+# Native Apple apps are exempt from the Fonts rule.
+expect 0 "setkernel/CardinalApp" "claudeMd exempts CardinalApp from the Fonts rule" -- jq -r .claudeMd "$root/managed/settings.json"
+
+# The version pin and console locks from the #23 research amendments.
+settings_key() { jq -e "$1" "$root/managed/settings.json"; }
+expect 0 '"2.1.295"' "requiredMinimumVersion pins 2.1.295" -- settings_key .requiredMinimumVersion
+expect 1 "" "the update-only minimumVersion is gone" -- settings_key 'has("minimumVersion")'
+expect 0 '"latest"' "the update channel can reach the required minimum" -- settings_key .autoUpdatesChannel
+expect 0 "true" "claude.ai skills do not sync" -- settings_key ".syncClaudeAiSkills == false"
+expect 0 "true" "claude.ai plugins do not sync" -- settings_key ".syncClaudeAiPlugins == false"
+expect 0 "true" "managed mods only" -- settings_key '.pluginConfigs["cc-plugin-sec-default@builtin"].options.allowManagedModsOnly'
+expect 0 '"1"' "managed settings are logged to OTEL" -- settings_key .env.OTEL_LOG_MANAGED_SETTINGS
+for c in "tofu apply" "tofu destroy" "gh workflow run" "wrangler secret"; do
+  expect 0 "true" "$c is denied" -- settings_key ".permissions.deny | index(\"Bash($c*)\") != null"
+done
+expect 0 "true" "gh pr merge is denied" -- settings_key '.permissions.deny | index("Bash(gh pr merge*)") != null'
+
+# The org rules load into every session: keep them to the README's 40–60 lines (#23).
+expect 0 "" "the org rules stay within 60 lines" -- test "$(wc -l <"$root/rules/org-rules.md")" -le 60
 # The committed org rules carry the v4 merge quorum in place of "every PR needs Raghav's review" (#25).
 for marker in "in force as each repo's gate is qualified" 'R0: one non-author' 'R1: that plus an independent Codex review' \
   'R2: two approvals, Codex and a visual diff' 'R3 (secrets, auth, money, DNS and tofu' 'R2 plus Raghav'"'"'s `/approve <sha>`' \
@@ -70,12 +94,117 @@ deny_jq() { jq -er "(.permissions.deny) as \$d | $1" "$root/managed/settings.jso
 missing='if . == [] then "none missing" else ("missing: " + join(", ")), false end'
 expect 0 "none missing" "every Read denial has an Edit twin" -- \
   deny_jq "[\$d[] | select(startswith(\"Read(\")) | \"Edit(\" + .[5:]] - \$d | $missing"
-expect 0 "none missing" "every wrangler denial has an npx wrangler twin" -- \
-  deny_jq "[\$d[] | select(startswith(\"Bash(wrangler \")) | \"Bash(npx \" + .[5:]] - \$d | $missing"
-expect 0 "none missing" "remote D1 migrations and remote --file runs are denied" -- \
-  deny_jq "[\"Bash(wrangler d1 migrations apply:*)\", \"Bash(wrangler d1 execute *--remote*--file*)\", \"Bash(wrangler d1 execute *--file*--remote*)\"] - \$d | $missing"
+expect 0 "none missing" "every wrangler denial covers any runner (npx, pnpm, yarn, bunx) too" -- \
+  deny_jq "[\$d[] | select(startswith(\"Bash(wrangler \") and endswith(\":*)\")) | .[5:-1] | sub(\":\\\\*\$\"; \"\") | \"Bash(* \" + . + \")\", \"Bash(* \" + . + \" *)\"] - \$d | $missing"
 expect 0 "none missing" ".dev.vars.* is denied and the example files are carved out" -- \
-  deny_jq "[\"Read(./.dev.vars.*)\", \"Read(!.env.example)\", \"Read(!.dev.vars.example)\"] - \$d | $missing"
+  deny_jq "[\"Read(**/.dev.vars.*)\", \"Read(!.env.example)\", \"Read(!.dev.vars.example)\"] - \$d | $missing"
+expect 0 "none missing" "home-directory credentials are denied, and shell startup files closed to edits" -- \
+  deny_jq "[\"~/.ssh/**\", \"~/.config/sk-agent/**\", \"~/.claude/.credentials.json\", \"~/.git-credentials\", \"~/.npmrc\", \"~/.docker/config.json\"]
+    | map(\"Read(\" + . + \")\") + [\"Edit(~/.bashrc)\", \"Edit(~/.zshrc)\", \"Edit(~/.profile)\"] - \$d | $missing"
+
+# Bash deny rules, matched the way Claude Code reads them (permissions doc, "Wildcard patterns"):
+# `*` is any text, `:*` at the end is ` *`, and a trailing ` *` as the only `*` also matches the
+# bare command. bash_denied <command> prints the rule that denies it, or "allowed" and exits 1.
+bash_rules=$(jq -r '.permissions.deny[] | select(startswith("Bash(")) | .[5:-1]' "$root/managed/settings.json")
+bash_denied() {
+  set -f
+  old_ifs=$IFS
+  IFS='
+'
+  for rule in $bash_rules; do
+    pat=$rule
+    case $pat in *:\*) pat="${pat%:\*} *" ;; esac
+    bare=
+    case $pat in *" *") case ${pat% \*} in *\**) ;; *) bare=${pat% \*} ;; esac ;; esac
+    # shellcheck disable=SC2254 # the rule is the pattern
+    case $1 in $pat) IFS=$old_ifs; set +f; echo "denied by $rule"; return 0 ;; esac
+    if [ -n "$bare" ] && [ "$1" = "$bare" ]; then IFS=$old_ifs; set +f; echo "denied by $rule"; return 0; fi
+  done
+  IFS=$old_ifs
+  set +f
+  echo allowed
+  return 1
+}
+while IFS= read -r c; do
+  expect 0 "denied by" "deny: $c" -- bash_denied "$c"
+done <<'EOF'
+git push --force origin feat
+git push -f
+git push --force-with-lease
+git push --force-with-lease=feat:abc123 origin feat
+git push origin main --force
+git push origin feat -f
+git push origin +main
+git -C /srv/repo push -f
+git -C . push origin feat --force-with-lease
+git -c push.default=current push +HEAD
+tofu apply
+tofu -chdir=infra apply
+tofu -chdir=infra destroy -auto-approve
+gh workflow run x.yml
+gh -R o/r workflow run x.yml
+npx wrangler secret put X
+wrangler deploy
+npx wrangler deploy
+npx --yes wrangler deploy --env production
+pnpm wrangler deploy
+pnpm exec wrangler deploy
+yarn wrangler deploy
+bunx wrangler deploy
+wrangler versions deploy
+npx wrangler versions deploy --yes
+wrangler pages deploy dist
+pnpm dlx wrangler pages deploy ./dist
+npm run deploy
+npm run deploy:prod
+pnpm deploy
+pnpm run deploy
+yarn deploy
+bun run deploy
+wrangler d1 migrations apply DB --remote
+pnpm wrangler d1 migrations apply DB
+npx wrangler d1 execute DB --remote --file seed.sql
+pnpm wrangler d1 execute DB --file=seed.sql --remote
+EOF
+while IFS= read -r c; do
+  expect 1 "allowed" "allow: $c" -- bash_denied "$c"
+done <<'EOF'
+git push
+git push origin feat
+git push -u origin agent/23-harden-fix
+git push origin my-feature-fix --follow-tags
+git status
+git commit -m "fix: force the lease"
+tofu plan
+tofu -chdir=infra plan
+gh workflow list
+wrangler dev
+wrangler deployments list
+npx wrangler d1 execute DB --local --file seed.sql
+npm run build
+pnpm install
+EOF
+
+# Read and Edit rules use gitignore syntax (permissions doc, "Read and Edit"), so git check-ignore
+# stands in for the matcher: project rules depth-independent with the example files open, home
+# rules matched from the home directory with ~/.config/gh left open for the agents.
+gi=$tmp/gitignore
+mkdir -p "$gi/project" "$gi/home" && git -C "$gi/project" init -q && git -C "$gi/home" init -q
+jq -r '.permissions.deny[] | select(startswith("Read(")) | .[5:-1] | select(startswith("~/") or startswith("//") | not) | sub("^\\./"; "")' \
+  "$root/managed/settings.json" >"$gi/project/.gitignore"
+jq -r '.permissions.deny[] | select(startswith("Read(~/")) | .[7:-1]' "$root/managed/settings.json" >"$gi/home/.gitignore"
+for p in .env apps/api/.env .env.production apps/web/.env.local .dev.vars workers/x/.dev.vars.staging certs/site.pem keys/AuthKey.p8 deep/id_ed25519; do
+  expect 0 "" "Read denies $p" -- git -C "$gi/project" check-ignore -q --no-index "$p"
+done
+for p in .env.example apps/api/.env.example .dev.vars.example workers/x/.dev.vars.example src/env.ts README.md; do
+  expect 1 "" "Read allows $p" -- git -C "$gi/project" check-ignore -q --no-index "$p"
+done
+for p in .ssh/id_ed25519 .ssh/config .config/sk-agent/env .claude/.credentials.json .git-credentials .npmrc .docker/config.json; do
+  expect 0 "" "Read denies ~/$p" -- git -C "$gi/home" check-ignore -q --no-index "$p"
+done
+for p in .config/gh/hosts.yml .claude/settings.json .bashrc .gitconfig; do
+  expect 1 "" "Read allows ~/$p" -- git -C "$gi/home" check-ignore -q --no-index "$p"
+done
 expect 0 "none missing" "keys and certificates are denied at any depth" -- \
   deny_jq "[\"*.pem\", \"*.key\", \"*.p8\", \"*.p12\", \"*.jks\", \"*.keystore\", \"*.mobileprovision\", \"id_rsa\", \"id_ed25519\"] | map(\"Read(**/\" + . + \")\") - \$d | $missing"
 expect 0 "carve-outs last" "each carve-out follows the denials it opens" -- \
@@ -103,10 +232,143 @@ expect 0 "Version holds (setkernel org policy)" "the session hook prints the hol
 expect 0 "typescript-6.0" "the printed holds name each hold" -- \
   env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
 
+# The git guard (PreToolUse on Bash): blocks the forms a deny rule misses, lets ordinary work through.
+hooks=$root/plugins/setkernel/hooks
+expect 0 "git-guard.sh" "the plugin registers the git guard on Bash" -- \
+  jq -er '.hooks.PreToolUse[] | select(.matcher == "Bash") | .hooks[].command' "$hooks/hooks.json"
+grepo=$tmp/guardrepo
+mkdir -p "$grepo" && git -C "$grepo" init -q -b feat && git -C "$grepo" -c user.name=t -c user.email=t@example.com commit -q --allow-empty -m init
+git -C "$grepo" config alias.yolo 'push --force'
+git -C "$grepo" config alias.nuke '!git reset --hard'
+git -C "$grepo" config alias.st status
+mrepo=$tmp/mainrepo
+mkdir -p "$mrepo" && git -C "$mrepo" init -q -b main
+# guard <dir> <command>: run the hook on a Bash call as Claude Code sends it.
+guard() {
+  jq -n --arg c "$2" --arg d "$1" '{hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {command: $c}, cwd: $d}' |
+    run_sh "$hooks/git-guard.sh"
+}
+while IFS= read -r c; do
+  expect 2 "setkernel git guard: blocked" "guard blocks: $c" -- guard "$grepo" "$c"
+done <<'EOF'
+git push --force-with-lease
+git push origin feat --force
+git push -uf origin feat
+git push origin +feat
+git -C . push -f origin feat
+git -c push.default=current --no-pager push --force
+env GIT_TRACE=0 git push --force
+sh -c "git push -f origin feat"
+sudo -u root git push -f origin feat
+env -u VAR git push -f origin feat
+sudo -u root git push origin main
+nice -n 5 git reset --hard
+timeout -s KILL 5 git push --force
+cd sub && git push origin feat -f
+echo "$(git push --mirror)"
+git push origin main
+git push origin HEAD:refs/heads/main
+git push origin feat:master
+git push --all origin
+git push origin --delete old-branch
+git push origin -d old-branch
+git push origin :old-branch
+git push --prune origin
+git reset --hard
+git reset --hard origin/feat
+git -C /srv/repo reset --hard HEAD~1
+git clean -f
+git clean -fdx
+git clean -d --force
+timeout 30 git clean -xdf
+git -c alias.up=push up -f
+git -c "alias.x=!git push -f" x
+git yolo
+git nuke
+git st; git st; git st; git yolo
+git push --force-w origin feat
+git push --force-with=feat:abc origin feat
+git push --forc origin feat
+git push --mirr
+git push --mi origin
+git push --del origin feat
+git push origin --de feat
+git push --prun origin
+git push --pru origin
+git push --al origin
+git push --br origin
+git reset --har HEAD
+git reset --ha
+git clean --forc
+git clean -d --fo
+EOF
+while IFS= read -r c; do
+  expect 0 "" "guard allows: $c" -- guard "$grepo" "$c"
+done <<'EOF'
+git push
+git push origin feat
+git push -u origin agent/23-harden
+git push origin HEAD
+git push --follow-tags origin feat
+git push --foll origin feat
+git push -o
+git push --no-force-with-lease origin feat
+git push --dry-run --porcelain origin feat
+git push --repo origin feat
+git push --push-o ci.skip origin feat
+git status
+git reset --soft HEAD~1
+git reset --so HEAD~1
+git clean --dry-run -d
+git reset HEAD file.txt
+git clean -n
+git clean -nd
+git stash push -m wip
+git commit -m "docs: explain the push guard"
+grep -rn "git push" docs
+git -c alias.st=status st
+echo done
+EOF
+expect 2 "default branch (main)" "on main, a bare git push is a push to the default branch" -- guard "$mrepo" "git push"
+expect 2 "default branch (main)" "on main, git push origin HEAD is too" -- guard "$mrepo" "git push origin HEAD"
+# A redirect's file descriptor number (the 2 in 2>&1) is not a branch name.
+expect 2 "default branch (main)" "on main, git push origin 2>&1" -- guard "$mrepo" "git push origin 2>&1"
+expect 2 "default branch (main)" "on main, git push -u origin 2>/dev/null" -- guard "$mrepo" "git push -u origin 2>/dev/null"
+expect 2 "default branch (main)" "on main, git push origin 2>>log" -- guard "$mrepo" "git push origin 2>>log"
+expect 0 "" "on main, git push origin feature 2>&1 names a branch" -- guard "$mrepo" "git push origin feature 2>&1"
+# A cd earlier in the command line moves the repo the guard reads the branch from.
+expect 2 "default branch (main)" "cd into a repo on main, then a bare git push" -- guard "$tmp" "cd mainrepo && git push"
+expect 2 "default branch (main)" "cd into a repo on main, then git push origin HEAD" -- guard "$tmp" "cd $mrepo; git push origin HEAD"
+expect 0 "" "cd from main into a feature checkout, then a bare git push" -- guard "$mrepo" "cd ../guardrepo && git push"
+# An alias run with -C is expanded and checked in that repository, not the session's cwd.
+git -C "$mrepo" config alias.pub 'push origin HEAD'
+git -C "$grepo" config alias.pub 'push origin HEAD'
+expect 2 "default branch (main)" "git -C <repo on main> pub, an alias for push origin HEAD" -- guard "$grepo" "git -C $mrepo pub"
+expect 0 "" "git -C <feature checkout> pub from a repo on main" -- guard "$mrepo" "git -C $grepo pub"
+expect 2 "git reset --hard" "git -C <repo> nuke, an alias only that repo has" -- guard "$tmp" "git -C guardrepo nuke"
+# The hook sees the session's environment: sk-agent's runs set SETKERNEL_GUARD_NO_PUSH=1.
+jq -n --arg d "$grepo" '{tool_input: {command: "git push origin feat"}, cwd: $d}' >"$tmp/feat.json"
+jq -n --arg d "$grepo" '{tool_input: {command: "git -C . push \"--force\"", description: "a \"quoted\" push"}, cwd: $d}' >"$tmp/force.json"
+echo '{}' >"$tmp/nocmd.json"
+# hook_on <input-file> [VAR=value…]: run the guard with that input and environment.
+hook_on() {
+  f=$1
+  shift
+  # shellcheck disable=SC2086 # sh_cmd may be "busybox sh"
+  env "$@" $sh_cmd "$hooks/git-guard.sh" <"$f"
+}
+expect 2 "the worker pushes" "SETKERNEL_GUARD_NO_PUSH=1 blocks every push" -- hook_on "$tmp/feat.json" SETKERNEL_GUARD_NO_PUSH=1
+expect 0 "" "an input without a command passes" -- hook_on "$tmp/nocmd.json"
+# Without jq the guard still reads the command (macOS before 15 ships no jq).
+nojq=$tmp/nojq
+mkdir -p "$nojq"
+for t in "${sh_cmd%% *}" sed tr git cat; do ln -s "$(command -v "$t")" "$nojq/$t"; done
+expect 2 "blocked a force push" "without jq: a quoted force push is blocked" -- hook_on "$tmp/force.json" PATH="$nojq"
+expect 0 "" "without jq: a feature-branch push passes" -- hook_on "$tmp/feat.json" PATH="$nojq"
 # The D1 guard (PreToolUse) denies remote D1 writes and remote --file runs; everything else passes (#18).
-guard=$root/plugins/setkernel/hooks/d1-guard.sh
+d1guard=$root/plugins/setkernel/hooks/d1-guard.sh
 # hook <stdin-text>: feed the text to the guard on stdin.
-hook() { printf '%s' "$1" | run_sh "$guard"; }
+hook() { printf '%s' "$1" | run_sh "$d1guard"; }
 # bash_in <command>: the PreToolUse JSON for a Bash command.
 bash_in() { jq -nc --arg c "$1" '{tool_name: "Bash", tool_input: {command: $c}}'; }
 deny='"permissionDecision":"deny"'
@@ -167,11 +429,11 @@ expect 0 '^$' "the guard allows unrelated malformed input" -- hook 'not json'
 
 # The verify gate (#31): a Stop hook that blocks while the repo's `make check` fails.
 gate=$root/plugins/setkernel/hooks/verify-gate.sh
-grepo=$tmp/gaterepo
-mkdir -p "$grepo/tools" && git -C "$grepo" init -q
+gaterepo=$tmp/gaterepo
+mkdir -p "$gaterepo/tools" && git -C "$gaterepo" init -q
 # A Makefile in the shape of setkernel/hq's template: STEPS, PASS/FAIL per step, a summary line.
 # The test step fails while the file `red` exists; every run is counted in $tmp/gate-runs.
-cat >"$grepo/Makefile" <<'EOF'
+cat >"$gaterepo/Makefile" <<'EOF'
 STEPS = lint test
 check:
 	@sh tools/check.sh $(STEPS)
@@ -180,7 +442,7 @@ lint:
 test:
 	@echo 'assertion "x" \ failed'; test ! -f red
 EOF
-cat >"$grepo/tools/check.sh" <<EOF
+cat >"$gaterepo/tools/check.sh" <<EOF
 echo run >>"$tmp/gate-runs"
 pass=0; fail=0; failed=""
 for step in "\$@"; do
@@ -190,25 +452,25 @@ done
 echo "== \$pass passed, \$fail failed\${failed:+:\$failed}"
 [ "\$fail" -eq 0 ]
 EOF
-printf 'red\n' >"$grepo/.gitignore"
-git -C "$grepo" add -A && git -C "$grepo" -c user.name=t -c user.email=t@example.com commit -qm init
+printf 'red\n' >"$gaterepo/.gitignore"
+git -C "$gaterepo" add -A && git -C "$gaterepo" -c user.name=t -c user.email=t@example.com commit -qm init
 gstate=$tmp/gate-state
 # gate <mode> <hook-input-json> [VAR=value...]: run the hook as Claude Code would.
 gate() {
   m=$1 j=$2
   shift 2
-  printf '%s' "$j" | env CLAUDE_PROJECT_DIR="$grepo" CLAUDE_PLUGIN_DATA="$gstate" SETKERNEL_VERIFY_GATE=1 "$@" $sh_cmd "$gate" "$m"
+  printf '%s' "$j" | env CLAUDE_PROJECT_DIR="$gaterepo" CLAUDE_PLUGIN_DATA="$gstate" SETKERNEL_VERIFY_GATE=1 "$@" $sh_cmd "$gate" "$m"
 }
 runs() { if [ -f "$tmp/gate-runs" ]; then wc -l <"$tmp/gate-runs" | tr -d ' '; else echo 0; fi; }
 in_stop='{"session_id":"s1","hook_event_name":"Stop","permission_mode":"bypassPermissions","stop_hook_active":false,"last_assistant_message":"done, \"agent_type\": \"reviewer\""}'
 
 expect 0 "hooks/verify-gate.sh\\\\\" stop" "hooks.json runs the gate on Stop" -- jq -r '.hooks.Stop[0].hooks[0].command | @json' "$root/plugins/setkernel/hooks/hooks.json"
 expect 0 "hooks/verify-gate.sh\\\\\" start" "hooks.json records the baseline on SessionStart" -- jq -r '[.hooks.SessionStart[0].hooks[].command] | @json' "$root/plugins/setkernel/hooks/hooks.json"
-expect 0 '^$' "SessionStart: the gate prints nothing into the context" -- sh -c "printf '%s' '{\"session_id\":\"s1\"}' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' start; echo"
-touch "$grepo/red"
+expect 0 '^$' "SessionStart: the gate prints nothing into the context" -- sh -c "printf '%s' '{\"session_id\":\"s1\"}' | env CLAUDE_PROJECT_DIR='$gaterepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' start; echo"
+touch "$gaterepo/red"
 expect 0 '^$' "a session that changed nothing is not gated (read-only run)" -- gate stop "$in_stop"
 expect 0 "^0$" "and its check did not run" -- runs
-printf 'change\n' >"$grepo/new.txt"
+printf 'change\n' >"$gaterepo/new.txt"
 expect 0 '^$' "off unless SETKERNEL_VERIFY_GATE=1" -- gate stop "$in_stop" SETKERNEL_VERIFY_GATE=
 expect 0 '^$' "plan mode is not gated" -- gate stop '{"session_id":"s1","permission_mode":"plan"}'
 for a in reviewer setkernel:reviewer setkernel:explorer Explore Plan; do
@@ -221,29 +483,29 @@ expect 0 "failing: test" "the reason names the failing step" -- jq -er .reason "
 expect 0 'assertion "x" \\ failed' "the reason carries the step's output, quotes and backslashes intact" -- jq -er .reason "$tmp/gate-out"
 expect 1 "" "and leaves out the passing step's output" -- sh -c "jq -er .reason '$tmp/gate-out' | grep 'lint is fine'"
 expect 0 "block 2 of 3" "the reason counts the blocks" -- jq -er .reason "$tmp/gate-out"
-expect 0 "This is the last block" "the third block says it is the last" -- sh -c "gate_out=\$(printf '%s' '$in_stop' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop) && printf '%s' \"\$gate_out\" | jq -er .reason"
+expect 0 "This is the last block" "the third block says it is the last" -- sh -c "gate_out=\$(printf '%s' '$in_stop' | env CLAUDE_PROJECT_DIR='$gaterepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop) && printf '%s' \"\$gate_out\" | jq -er .reason"
 gate stop "$in_stop" >"$tmp/gate-out" || true
 expect 1 "" "after 3 blocks the run may stop" -- grep '"decision"' "$tmp/gate-out"
 expect 0 "fails (exit 2, failing: test) after 3 blocks" "and the failure is reported to the user" -- jq -er .systemMessage "$tmp/gate-out"
-expect 0 "block 1 of 3" "a later stop starts a new round of blocks" -- sh -c "printf '%s' '$in_stop' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop | jq -er .reason"
-expect 0 "block 1 of 1" "SETKERNEL_VERIFY_GATE_MAX sets the limit" -- sh -c "printf '%s' '{\"session_id\":\"s2\"}' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 SETKERNEL_VERIFY_GATE_MAX=1 $sh_cmd '$gate' stop | jq -er .reason"
-rm -f "$grepo/red"
+expect 0 "block 1 of 3" "a later stop starts a new round of blocks" -- sh -c "printf '%s' '$in_stop' | env CLAUDE_PROJECT_DIR='$gaterepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop | jq -er .reason"
+expect 0 "block 1 of 1" "SETKERNEL_VERIFY_GATE_MAX sets the limit" -- sh -c "printf '%s' '{\"session_id\":\"s2\"}' | env CLAUDE_PROJECT_DIR='$gaterepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 SETKERNEL_VERIFY_GATE_MAX=1 $sh_cmd '$gate' stop | jq -er .reason"
+rm -f "$gaterepo/red"
 before=$(runs)
 expect 0 '^$' "make check green: the run stops" -- gate stop "$in_stop"
 expect 0 "^$((before + 1))$" "green ran the check once" -- runs
 expect 0 '^$' "a tree that already passed is not checked again" -- gate stop "$in_stop"
 expect 0 "^$((before + 1))$" "so the check did not rerun" -- runs
-printf 'more\n' >>"$grepo/new.txt"
+printf 'more\n' >>"$gaterepo/new.txt"
 expect 0 '^$' "an edit after green reruns the check" -- gate stop "$in_stop"
 expect 0 "^$((before + 2))$" "which ran once more" -- runs
 expect 0 '"decision":"block"' "SETKERNEL_VERIFY_CMD overrides make check" -- gate stop '{"session_id":"s3"}' SETKERNEL_VERIFY_CMD='echo boom; exit 1'
-expect 0 "boom" "and without a step summary the reason ends with the output" -- sh -c "printf '%s' '{\"session_id\":\"s3\"}' | env CLAUDE_PROJECT_DIR='$grepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 SETKERNEL_VERIFY_CMD='echo boom; exit 1' $sh_cmd '$gate' stop | jq -er .reason"
+expect 0 "boom" "and without a step summary the reason ends with the output" -- sh -c "printf '%s' '{\"session_id\":\"s3\"}' | env CLAUDE_PROJECT_DIR='$gaterepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 SETKERNEL_VERIFY_CMD='echo boom; exit 1' $sh_cmd '$gate' stop | jq -er .reason"
 expect 0 '^$' "a repo without a check target is not gated" -- \
   sh -c "printf '%s' '{\"session_id\":\"s4\"}' | env CLAUDE_PROJECT_DIR='$hookrepo' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop"
 mkdir -p "$tmp/nogit"
 expect 0 '^$' "outside a git repo the gate lets the run stop" -- \
   sh -c "printf '%s' '{\"session_id\":\"s4\"}' | env CLAUDE_PROJECT_DIR='$tmp/nogit' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop"
-expect 0 "" "the repo's own index is untouched" -- git -C "$grepo" diff --cached --quiet
+expect 0 "" "the repo's own index is untouched" -- git -C "$gaterepo" diff --cached --quiet
 
 # bin/dependabot-policy: writes the block, is idempotent, keeps the repo's own ignores, lifts cleanly.
 dp() { python3 "$root/bin/dependabot-policy" "$@"; }
@@ -335,6 +597,12 @@ expect 0 "typescript-6.0" "TypeScript 7 crosses its hold" -- dp crosses npm type
 expect 1 "" "TypeScript 6.0.3 does not cross" -- dp crosses npm typescript 6.0.3
 expect 0 "node-24" "@types/node 26 crosses" -- dp crosses npm @types/node 26.6.4
 expect 1 "" "a hold only applies to its ecosystem" -- dp crosses github-actions typescript 7.0.0
+
+# The verify skill (#15) tells the reader to prefer `make check` and how to report Docker-less runs.
+skill=$root/plugins/setkernel/skills/verify/SKILL.md
+expect 0 "run \`make check\`" "the verify skill runs make check when the repo has the target" -- grep -F 'run `make check`' "$skill"
+expect 0 "needs Docker (or OrbStack)" "the verify skill reports a Docker-less run as not run" -- grep -F 'needs Docker (or OrbStack)' "$skill"
+expect 0 "Steps 3 and 4 apply either way" "the verify skill keeps the grep and setup steps with a check target" -- grep -F 'Steps 3 and 4 apply either way' "$skill"
 
 echo "$((n - failures))/$n passed"
 [ "$failures" -eq 0 ]
