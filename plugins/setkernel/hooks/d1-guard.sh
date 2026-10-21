@@ -5,10 +5,11 @@
 # The managed deny list holds `d1 migrations apply` (only for the `wrangler` and `npx wrangler`
 # prefixes; this hook does not look at it) and `--remote` with `--file`, which this hook also denies;
 # it is the only layer for `--remote --command "<write>"` (setkernel#18).
-# POSIX sh (the agent VMs have no Node); jq only to read the input. Fails open when the command is
+# POSIX sh (the agent VMs have no Node); jq (or sed) only to read the input. Fails open when the command is
 # not a remote `d1 execute`. When the input is not JSON that jq can read (this includes a host
 # without jq), the raw text is scanned, with its `\n` escapes turned back into line breaks, so a
-# malformed payload that names a remote `d1 execute` write is still denied.
+# malformed payload that names a remote `d1 execute` write is still denied. Without jq, a payload
+# with a `command` string is read with sed and judged like any other.
 # SQL comments are not parsed, they are refused: a remote `d1 execute` with `/*` anywhere, or with
 # `--` inside a quoted string that a line break follows, is denied, because a comment could split a
 # phrase. A `--` outside quotes (wrangler's own flags, `echo -- x`) is not SQL and is ignored.
@@ -17,11 +18,27 @@
 # write shape not listed below. Also not covered: `d1 delete` and `d1 time-travel restore`.
 input=$(cat)
 raw=0
-cmd=$(printf '%s' "$input" | jq -er 'if (.tool_name // "Bash") == "Bash" then (.tool_input.command // empty) else empty end' 2>/dev/null)
-if [ $? -ne 0 ]; then
-  # jq failed: no command, another tool, or unreadable input. Only unreadable input is scanned raw.
-  printf '%s' "$input" | jq -e . >/dev/null 2>&1 && exit 0
-  raw=1
+if command -v jq >/dev/null 2>&1; then
+  cmd=$(printf '%s' "$input" | jq -er 'if (.tool_name // "Bash") == "Bash" then (.tool_input.command // empty) else empty end' 2>/dev/null)
+  if [ $? -ne 0 ]; then
+    # jq failed: no command, another tool, or unreadable input. Only unreadable input is scanned raw.
+    printf '%s' "$input" | jq -e . >/dev/null 2>&1 && exit 0
+    raw=1
+  fi
+else
+  # No jq (macOS before 15 ships none): pull the string values out with sed, as git-guard.sh does,
+  # and undo their JSON escapes. A payload without a `command` string is scanned raw.
+  field() {
+    printf '%s' "$input" | tr '\n' ' ' |
+      sed -n -E 's/.*"'"$1"'"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*/\1/p'
+  }
+  tool=$(field tool_name)
+  [ -z "$tool" ] || [ "$tool" = Bash ] || exit 0
+  cmd=$(field command | sed -e 's/\\\\/@BS@/g' -e 's/\\n/\
+/g' -e 's/\\t/ /g' -e 's/\\r/ /g' -e 's/\\"/"/g' -e 's/@BS@/\\/g')
+  [ -n "$cmd" ] || raw=1
+fi
+if [ "$raw" = 1 ]; then
   cmd=$(printf '%s' "$input" | sed 's/\\n/\
 /g')
 fi
@@ -43,10 +60,12 @@ deny() {
 
 # SQL comments: refuse rather than parse. `/*` anywhere; `--` inside a quoted string that a line
 # break follows (a backslash before the line break continues the command line, so it is not a break).
-# A raw (unparseable) payload has no usable quoting, so there every `--` counts as inside quotes.
+# A raw (unparseable) payload has no usable quoting, so there every `--` counts as inside quotes,
+# except one that starts a wrangler flag name (`--remote`): so `--remote` followed by a line break in
+# a malformed payload is a known gap.
 printf '%s' "$text" | grep -Fq -- '/*' &&
   deny 'Blocked by the setkernel D1 guard: a remote wrangler d1 execute with a /* comment. Put the SQL on one line, without comments.'
-printf '%s\n' "$lines" | awk -v raw="$raw" '
+printf '%s\n' "$lines" | awk -v raw="$raw" -v flags='^(remote|local|no-remote|command|json|config|env|yes|persist-to)([^a-z-]|$)' '
   { all = all $0 "\n" }
   END {
     q = raw ? "raw" : ""; dash = 0; n = length(all)
@@ -56,7 +75,7 @@ printf '%s\n' "$lines" | awk -v raw="$raw" '
       if (c == "\n") { if (q != "" && dash) exit 1; dash = 0; continue }
       if (q == "") { if (c == "\047" || c == "\"") q = c; continue }
       if (c == q) { q = ""; dash = 0; continue }
-      if (c == "-" && substr(all, i + 1, 1) == "-") dash = 1
+      if (c == "-" && substr(all, i + 1, 1) == "-" && !(raw && substr(all, i + 2, 20) ~ flags)) dash = 1
     }
   }' ||
   deny 'Blocked by the setkernel D1 guard: a remote wrangler d1 execute spread over lines with a -- comment. Put the SQL on one line, without comments.'

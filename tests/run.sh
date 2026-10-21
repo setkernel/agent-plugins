@@ -372,6 +372,8 @@ hook() { printf '%s' "$1" | run_sh "$d1guard"; }
 # bash_in <command>: the PreToolUse JSON for a Bash command.
 bash_in() { jq -nc --arg c "$1" '{tool_name: "Bash", tool_input: {command: $c}}'; }
 deny='"permissionDecision":"deny"'
+wr='a remote wrangler d1 execute statement that writes'
+cm='spread over lines with a -- comment'
 nl='
 '
 deny_cmd() { expect 0 "$deny" "the guard denies: $1" -- hook "$(bash_in "$1")"; }
@@ -390,9 +392,21 @@ deny_cmd 'wrangler d1 execute db --command "DELETE FROM t" --remote'
 deny_cmd "wrangler d1 execute db --remote --command \"select 1 -- done${nl}\"${nl}echo ok"
 deny_cmd "wrangler d1 execute db --remote --command 'select 1 -- done${nl}; select 2'"
 deny_cmd "wrangler d1 execute db --remote --command 'select 1 /* c */'"
-expect 0 "$deny" "the guard denies a write whose line breaks are escaped in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "select 1\nupdate t set a = 1"'
-expect 0 "$deny" "the guard denies a remote write after an escaped line break in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "x\ndelete\nfrom t"'
-expect 0 "$deny" "the guard denies a -- comment that splits a write in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "delete -- x\nfrom t"'
+expect 0 "$wr" "the guard denies a write whose line breaks are escaped in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "select 1\nupdate t set a = 1"'
+expect 0 "$wr" "the guard denies a remote write after an escaped line break in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "x\ndelete\nfrom t"'
+expect 0 "$cm" "the guard denies a -- comment that splits a write in a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "delete -- x\nfrom t"'
+# Without jq the command is read with sed: a read passes, a write is denied for its own reason.
+d1nojq=$tmp/d1nojq
+mkdir -p "$d1nojq"
+for t in "${sh_cmd%% *}" sed tr awk cat grep; do ln -s "$(command -v "$t")" "$d1nojq/$t"; done
+hook_nojq() { printf '%s' "$1" | env PATH="$d1nojq" $sh_cmd "$d1guard"; }
+expect 0 '^$' "without jq: a remote read is allowed" -- hook_nojq "$(bash_in 'wrangler d1 execute db --remote --command "SELECT * FROM users"')"
+expect 0 '^$' "without jq: a remote read with an escaped quote and a flag after it is allowed" -- hook_nojq "$(bash_in 'wrangler d1 execute db --remote --command "select \"a\" from t" --json')"
+expect 0 "$wr" "without jq: a remote DROP TABLE is denied as a write" -- hook_nojq "$(bash_in 'wrangler d1 execute db --remote --command "DROP TABLE t"')"
+expect 0 "$wr" "without jq: a write after a line break is denied as a write" -- hook_nojq "$(bash_in "wrangler d1 execute db --remote --command \"select 1${nl}update t set a = 1\"")"
+expect 0 "$cm" "without jq: a -- comment that splits a write is denied for the comment" -- hook_nojq "$(bash_in "wrangler d1 execute db --remote --command \"delete -- x${nl}from t\"")"
+expect 0 '^$' "without jq: a non-Bash tool is allowed" -- hook_nojq '{"tool_name":"Edit","tool_input":{"command":"wrangler d1 execute db --remote --command \"DROP TABLE t\""}}'
+expect 0 '^$' "without jq: a local write is allowed" -- hook_nojq "$(bash_in 'wrangler d1 execute db --local --command "DROP TABLE t"')"
 # Known gaps, pinned so a change shows up: indirection hides the SQL from a text match.
 allow_cmd 'wrangler d1 execute db --remote --command "$SQL"'
 allow_cmd 'wrangler d1 execute db --remote --command "$(echo ZGVsZXRlIGZyb20gdA== | base64 -d)"'
@@ -403,7 +417,7 @@ deny_cmd 'cd app && npx wrangler --config wrangler.toml d1 execute db --remote -
 deny_cmd 'wrangler d1 execute db --remote --file schema.sql'
 deny_cmd 'wrangler d1 execute db --file=./q.sql --remote'
 deny_cmd 'npx wrangler d1 execute db --remote --file schema.sql'
-expect 0 "$deny" "the guard denies a remote D1 write inside a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "DROP TABLE t"'
+expect 0 "$wr" "the guard denies a remote D1 write inside a malformed payload" -- hook 'not json: wrangler d1 execute db --remote --command "DROP TABLE t"'
 expect 0 '"hookEventName":"PreToolUse"' "the deny output names the PreToolUse event" -- hook "$(bash_in 'wrangler d1 execute db --remote --command "DROP TABLE t"')"
 allow_cmd 'wrangler d1 execute db --remote --command "SELECT * FROM users"'
 allow_cmd "wrangler d1 execute db --remote --command \"SELECT a,${nl}  b${nl}FROM t\""
