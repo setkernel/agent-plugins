@@ -21,9 +21,12 @@ command -v jq >/dev/null 2>&1 || { echo "bin/generate: needs jq" >&2; exit 2; }
 policy_url=https://github.com/setkernel/agent-plugins/blob/main/policy/versions.json
 
 # (a) The server-managed settings: claudeMd is rules/org-rules.md verbatim (minus the final newline).
+# A forceLoginOrgUUID still holding its REPLACE_WITH_ placeholder is left out: pasted, it would lock
+# every seat out, while a missing key only leaves the login unforced.
 render_settings() {
   jq -n --rawfile md "$root/rules/org-rules.md" --slurpfile base "$root/managed/settings.base.json" \
-    '{claudeMd: ($md | sub("\n+$"; ""))} + $base[0]'
+    '{claudeMd: ($md | sub("\n+$"; ""))} + $base[0]
+     | if (.forceLoginOrgUUID // "" | startswith("REPLACE_WITH_")) then del(.forceLoginOrgUUID) else . end'
 }
 
 # (b) The org version holds, printed into every Claude session by the plugin's SessionStart hook.
@@ -58,4 +61,8 @@ for pair in "settings.json:managed/settings.json" "holds.md:plugins/setkernel/po
   fi
 done
 [ "$mode" = --check ] && [ "$stale" -eq 0 ] && echo "generated files are current"
+# Say so on every run until the placeholder is filled.
+if grep -q REPLACE_WITH_ "$root/managed/settings.base.json"; then
+  echo "note: managed/settings.base.json still holds a REPLACE_WITH_ placeholder, so managed/settings.json leaves out forceLoginOrgUUID; fill it in and run bin/generate" >&2
+fi
 exit "$stale"
