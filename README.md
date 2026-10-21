@@ -12,9 +12,9 @@ from `main`; every merge needs Raghav's code-owner approval.
 | Path | What it is |
 | --- | --- |
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
-| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context and the opt-in `Stop` verify gate. `plugin.json` has no `version`, so every commit on `main` is a release. |
+| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context, the git guard (`PreToolUse` on Bash, see below) and the opt-in `Stop` verify gate. `plugin.json` has no `version`, so every commit on `main` is a release. |
 | `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
-| `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace, the enabled plugin, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
+| `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace and the only marketplace source allowed (`strictKnownMarketplaces`), the enabled plugin, org-only hooks (`allowManagedHooksOnly`), login, update and retention policy, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
 | `bin/generate` | The generator (POSIX sh + `jq`). |
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
@@ -35,7 +35,79 @@ In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `set
 4. After merge, plugin changes reach every seat through auto-update. A change to
    `managed/settings.json` only takes effect when Raghav pastes it into the org console.
 
-Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`, not in hooks.
+Hooks stay POSIX shell: the agent VMs have no Node. Org-wide denials go in `permissions.deny`; the
+git guard covers only the git commands a text rule can't pin down.
+
+## Guardrails, and their limits
+
+- **`permissions.deny`** in the managed settings: force-push, deploy and remote-D1 commands in the
+  forms people type (any runner: `npx`, `pnpm`, `yarn`, `bunx`), secret files at any depth with the
+  example files left open, home-directory credentials, and edits to shell startup files.
+- **The git guard** (`plugins/setkernel/hooks/git-guard.sh`, `PreToolUse` on Bash) splits the
+  command line and blocks a force push, a push to the default branch, deleting a remote branch,
+  `git reset --hard` and `git clean -f`, however they are spelled (`git -C dir`, `sh -c`, aliases).
+  With `SETKERNEL_GUARD_NO_PUSH=1` in the environment (sk-agent's runs) it blocks every push.
+- **`allowManagedHooksOnly`**: only hooks from the managed settings and this plugin run, so the
+  guard can't be switched off by a repo or user hook, and a repo's own hooks don't run.
+  Side effects: it also blocks `/goal`, hooks in agent frontmatter and in a project's settings, and
+  narrows `statusLine` to the managed settings. This plugin's hooks still run; a hook from a
+  GitHub-sourced mod does not.
+- **Version pin**: `requiredMinimumVersion` 2.1.295 stops an older Claude Code from starting
+  (`minimumVersion` only limits updates). `autoUpdatesChannel` is `latest`, because `stable` still
+  resolved to 2.1.292, below the minimum. A seat below 2.1.295 has to update by hand once. The
+  Homebrew `claude-code` cask tracks stable and ignores `autoUpdatesChannel`, so it can't reach
+  2.1.295 until stable does, and a Mac on it stops starting: before pasting the settings, switch
+  those Macs to the `claude-code@latest` cask (`brew uninstall --cask claude-code && brew install
+  --cask claude-code@latest`). There is no `requiredMaximumVersion` yet: no Claude Code hold
+  exists, so Raghav sets one if he wants it.
+- **`gh pr merge`** is denied for everyone, humans' Macs included, so merging goes through the web UI.
+- **`tofu apply`, `tofu destroy`, `gh workflow run` and `wrangler secret`** are denied too (also on
+  the humans' Macs). Like every Bash rule they match the command text only: a compound command
+  (`cd infra && tofu apply`) is matched per segment, but a script, a variable or `bash -c` that runs
+  them is not.
+- **`pnpm deploy*`** is denied, which also blocks pnpm's built-in `pnpm deploy` (copying a workspace
+  package, used in Docker builds).
+- **To verify that policy reached a seat**, `OTEL_LOG_MANAGED_SETTINGS=1` (set in `env`) makes Claude
+  Code log the managed settings it loaded; check that log. A denied command run in a session is the
+  second check. This is the way to verify delivery on a VM (hq#314).
+- The git guard splits command lines on newlines too, so a multi-line commit message, PR body or
+  heredoc with a line that starts `git reset --hard` or `git clean -f` is blocked: reword the line.
+
+### Locks that belong in the VM policy file, not here
+The console can't target groups, so anything placed there also binds the humans' Macs. These go in
+the VM-only policy file (setkernel/hq#186) with the console on `managedSourcesBehavior: "merge"`:
+`strictPluginOnlyCustomization: ["hooks","mcp"]`, `crossSessionInbound: "refuse"`, model pinning
+(`availableModels`, `availableModelsMatch: "exact"`, `deniedModels`, `maxEffortLevel`), unattended
+mode as `--permission-mode auto --permission-prompts none` in place of
+`--dangerously-skip-permissions`, and `autoMode.environment` plus a deny on pushing to `main`
+(auto mode otherwise allows a push to any branch of the working repo).
+
+### What this guards on a push to `main`, and what it can't
+Platform probes (setkernel/hq#220, 2026-10-16 and 10-17; decision 0007's amendment, hq#259) show
+that managed deny rules do not guard pushes to `main`, and that Claude's cloud sessions (Anthropic-
+hosted and the self-hosted runner) push to `main` as the GitHub user `claude` through the platform's
+git proxy, with the creator's access and no branch restriction. So:
+- **Guarded here:** a push to the default branch from a local session or agent VM where this plugin's
+  hook runs (the git guard) and `permissions.deny` applies. Both are speed bumps (below).
+- **Not guarded here:** cloud sessions, and anything that doesn't run this plugin's `PreToolUse`
+  hook. Keeping `main` safe there takes GitHub branch protection or rulesets on `main`, which don't
+  depend on the client, not this repo. agent-plugins#23 therefore promises no main-branch guard
+  beyond the local one.
+
+### Do these settings reach the agent VMs?
+Unconfirmed. On 2026-10-20 the VMs' `~/.claude/remote-settings.json` was 0 bytes (2 on one VM) and
+none has `/etc/claude-code/managed-settings.json` (setkernel/hq#314). Until that issue shows a
+managed deny rule blocking on a VM, assume `managed/settings.json` (deny rules, `allowManagedHooksOnly`,
+the version pin) does **not** reach them, and that a VM gets this plugin's hooks only if it installs
+the plugin itself. If the cache turns out to be empty, the fix is hq#314's: a login type that
+receives managed settings, or installing `managed/settings.json` as
+`/etc/claude-code/managed-settings.json`.
+
+These are a speed bump against mistakes, not the security boundary. Bash rules and the guard match
+command text, so a script, `/usr/bin/git`, a variable or `python -c` still gets past them, and
+`Read` rules don't stop a program that opens the file itself
+([Bash rule limits](https://code.claude.com/docs/en/permissions#bash-rule-limits)). The boundary
+is the OS sandbox and keeping credentials out of the agent's reach: setkernel/hq#186.
 
 ## Version holds
 
@@ -87,6 +159,16 @@ canaried on one VM before it reaches every seat.
 
 ```sh
 claude --plugin-dir ./plugins/setkernel
+```
+
+On a seat with the managed settings, that copy is ignored (`--plugin-dir copy of "setkernel" ignored:
+plugin is locked by managed settings` in the debug log) and the published plugin loads instead. Load a
+renamed copy:
+
+```sh
+d=$(mktemp -d) && cp -R plugins/setkernel "$d/"
+jq '.name = "setkernel-try"' plugins/setkernel/.claude-plugin/plugin.json >"$d/setkernel/.claude-plugin/plugin.json"
+claude --plugin-dir "$d/setkernel"
 ```
 
 Or install it from the marketplace: `/plugin marketplace add setkernel/agent-plugins`, then
