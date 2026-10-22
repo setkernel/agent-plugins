@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests for bin/generate, the session hook, the verify gate and bin/dependabot-policy. POSIX sh; needs jq for the generator tests.
+# Tests for bin/generate, the session hook, the verify gate, the persona hook and bin/dependabot-policy. POSIX sh; needs jq for the generator tests.
 # Usage: tests/run.sh            (set SHELL_UNDER_TEST=dash or "busybox sh" to try other shells)
 set -eu
 
@@ -444,6 +444,91 @@ mkdir -p "$tmp/nogit"
 expect 0 '^$' "outside a git repo the gate lets the run stop" -- \
   sh -c "printf '%s' '{\"session_id\":\"s4\"}' | env CLAUDE_PROJECT_DIR='$tmp/nogit' CLAUDE_PLUGIN_DATA='$gstate' SETKERNEL_VERIFY_GATE=1 $sh_cmd '$gate' stop"
 expect 0 "" "the repo's own index is untouched" -- git -C "$gaterepo" diff --cached --quiet
+
+# The persona hook (#37): opt-in, keyed on a setkernel email, fetched with a stub gh, owner-only cache.
+# Made-up persona text only: real personas are private (decision 0001).
+persona=$hooks/persona.sh
+phome=$tmp/persona-home
+pstub=$tmp/persona-stub
+pdata=$tmp/persona-data
+mkdir -p "$phome" "$pstub"
+cat >"$pstub/gh" <<EOF
+#!/bin/sh
+echo "\$*" >>"$tmp/gh-calls"
+[ -f "$tmp/gh-down" ] && { echo 'gh: error connecting to api.github.com' >&2; exit 1; }
+case "\$*" in
+  *"repos/setkernel/hq/contents/agents/personas/zz-test.md"*) printf '# Made-up test persona\nLikes "quotes" and back\\\\slashes.\n' ;;
+  *) echo 'gh: Not Found (HTTP 404)' >&2; exit 1 ;;
+esac
+EOF
+chmod +x "$pstub/gh"
+# with_email <email>: the global git email the hook keys on.
+with_email() { printf '[user]\n\temail = %s\n' "$1" >"$phome/.gitconfig"; }
+# persona_hook [VAR=value…]: run the hook as Claude Code would, outside any repo, opted in.
+# shellcheck disable=SC2120 # expect and silent pass the arguments
+persona_hook() {
+  # shellcheck disable=SC2086 # sh_cmd may be "busybox sh"
+  (cd "$tmp" && printf '{"session_id":"p1"}' | env HOME="$phome" XDG_CACHE_HOME= GIT_CONFIG_GLOBAL="$phome/.gitconfig" \
+    GIT_CONFIG_NOSYSTEM=1 CLAUDE_PLUGIN_DATA="$pdata" PATH="$pstub:$PATH" SETKERNEL_PERSONA=1 "$@" $sh_cmd "$persona")
+}
+# silent <command…>: "silent" when the command exits 0 and prints nothing, stderr included.
+silent() {
+  out=$("$@" 2>&1) && [ -z "$out" ] && echo silent
+}
+gh_calls() { if [ -f "$tmp/gh-calls" ]; then wc -l <"$tmp/gh-calls" | tr -d ' '; else echo 0; fi; }
+
+expect 0 '^10$' "hooks.json runs the persona hook on SessionStart with a 10 s timeout" -- \
+  jq -r '.hooks.SessionStart[].hooks[] | select(.command | contains("hooks/persona.sh")) | .timeout' "$hooks/hooks.json"
+with_email zz-test@setkernel.com
+expect 0 "^silent$" "off unless SETKERNEL_PERSONA=1" -- silent persona_hook SETKERNEL_PERSONA=
+expect 0 "^0$" "and gh is not called" -- gh_calls
+for e in zz-test@example.com zz-test@setkernel.com.evil.example zz-test@notsetkernel.com; do
+  with_email "$e"
+  expect 0 "^silent$" "no persona for another domain: $e" -- silent persona_hook
+done
+for e in ../zz-test@setkernel.com a/b@setkernel.com zz.test@setkernel.com -rf@setkernel.com @setkernel.com 'a b@setkernel.com'; do
+  with_email "$e"
+  expect 0 "^silent$" "no persona for an unsafe name: $e" -- silent persona_hook
+done
+expect 0 "^0$" "none of those called gh" -- gh_calls
+rm -f "$phome/.gitconfig"
+expect 0 "^silent$" "no persona without a git email" -- silent persona_hook
+
+with_email zz-test@setkernel.com
+persona_hook >"$tmp/persona-out" 2>&1 || true
+expect 0 "^true$" "opted in: SessionStart JSON with the persona as additionalContext" -- \
+  jq -e '.hookSpecificOutput.hookEventName == "SessionStart" and (.hookSpecificOutput.additionalContext | test("^Your persona \\(from setkernel/hq agents/personas/zz-test.md, private"))' "$tmp/persona-out"
+expect 0 'Likes "quotes" and back\\slashes.' "the persona text arrives intact" -- jq -er .hookSpecificOutput.additionalContext "$tmp/persona-out"
+expect 0 "^1$" "gh was called once" -- gh_calls
+expect 0 "^drwx------" "the cache dir is owner-only" -- ls -ld "$pdata/persona"
+expect 0 "^-rw-------" "the cached persona is owner-only" -- ls -l "$pdata/persona/zz-test.md"
+expect 0 "^# Made-up test persona" "the cache holds the persona" -- cat "$pdata/persona/zz-test.md"
+touch "$tmp/gh-down"
+expect 0 "Made-up test persona" "a fresh cache is used while gh is down" -- persona_hook
+expect 0 "^1$" "so gh was not called again" -- gh_calls
+with_email ZZ-Test@SetKernel.COM
+expect 0 "Made-up test persona" "the email's case does not matter" -- persona_hook
+with_email zz-test@setkernel.com
+expect 0 "^silent$" "SETKERNEL_PERSONA_TTL=0 forces a fetch; with gh failing, no persona and exit 0" -- silent persona_hook SETKERNEL_PERSONA_TTL=0
+rm -rf "$pdata"
+expect 0 "^silent$" "gh failing with no cache: no persona, exit 0, gh's error not shown" -- silent persona_hook
+rm -f "$tmp/gh-down"
+with_email zz-nobody@setkernel.com
+expect 0 "^silent$" "no such persona (gh 404): no persona, exit 0" -- silent persona_hook
+expect 1 "" "and nothing is cached for it" -- test -e "$pdata/persona/zz-nobody.md"
+with_email zz-test@setkernel.com
+chmod 755 "$pdata/persona"
+expect 0 "Made-up test persona" "a cache dir left wider is still used" -- persona_hook
+expect 0 "^drwx------" "and made owner-only again" -- ls -ld "$pdata/persona"
+rm -rf "$pdata"
+expect 0 "Made-up test persona" "without CLAUDE_PLUGIN_DATA the cache is under XDG_CACHE_HOME" -- persona_hook CLAUDE_PLUGIN_DATA= XDG_CACHE_HOME="$tmp/persona-xdg"
+expect 0 "^-rw-------" "and owner-only there too" -- ls -l "$tmp/persona-xdg/setkernel/persona/zz-test.md"
+# Without jq there is no safe way to build the JSON here: no persona, exit 0.
+pnojq=$tmp/persona-nojq
+mkdir -p "$pnojq"
+for t in "${sh_cmd%% *}" git tr find cat mkdir chmod mv rm env; do ln -s "$(command -v "$t")" "$pnojq/$t"; done
+ln -s "$pstub/gh" "$pnojq/gh"
+expect 0 "^silent$" "without jq: no persona, exit 0" -- silent persona_hook PATH="$pnojq" SETKERNEL_PERSONA_TTL=0
 
 # bin/dependabot-policy: writes the block, is idempotent, keeps the repo's own ignores, lifts cleanly.
 dp() { python3 "$root/bin/dependabot-policy" "$@"; }
