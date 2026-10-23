@@ -33,14 +33,14 @@ the Claude org console. No secrets or Infisical values are involved.
 ## Layout
 - `plugins/setkernel/`: the plugin: `skills/` (`verify`, `review-blockers`, `ship-pr`), `agents/`
   (`explorer`, `reviewer`), `hooks/` (POSIX sh: the `SessionStart` context hook, `git-guard.sh`, the
-  `PreToolUse` git guard, and the opt-in `Stop` verify gate).
+  `PreToolUse` git guard, `d1-guard.sh`, the always-on `PreToolUse` D1 guard, and the opt-in `Stop` verify gate).
 - `.claude-plugin/marketplace.json`: the `setkernel` marketplace; lists the one plugin.
 - `rules/org-rules.md`: the one source of the org rules (becomes `claudeMd` in managed settings).
 - `managed/settings.base.json`: hand-edited part of the managed settings (`permissions.deny`,
   marketplace, enabled plugin).
 - `bin/generate`: builds the generated files below from those sources.
 - `bin/dependabot-policy`: writes the version holds into a repo's `dependabot.yml`.
-- `tests/run.sh`: tests for the generator, the session hook, the verify gate and `bin/dependabot-policy`.
+- `tests/run.sh`: tests for the generator, the session hook, the verify gate, the D1 guard and `bin/dependabot-policy`.
 
 ## Traps and don't-touch
 - Generated, never edit by hand: `managed/settings.json` and `plugins/setkernel/policy/holds.md`.
@@ -51,6 +51,9 @@ the Claude org console. No secrets or Infisical values are involved.
   apostrophe.
 - Org-wide denials go in `permissions.deny` in `managed/settings.base.json`. The git guard hook
   covers only git commands a text rule can't match; both are a speed bump, not a boundary (README).
+  The other hook exception is `hooks/d1-guard.sh` (#18, Raghav's call): rules match literal case-sensitive text and can't
+  see SQL, so remote D1 writes are denied by a `PreToolUse` hook. It has no env switch, so it applies to Bash on
+  every seat with the plugin; keep the `d1 migrations apply` and `--file` denials in `permissions.deny` too.
 - `allowManagedHooksOnly` is on: only managed and this plugin's hooks run, so a hook belongs here.
 - `managed/settings.base.json` holds a `REPLACE_WITH_` placeholder until Raghav fills in
   `forceLoginOrgUUID`; pasted, no login would match it, so `bin/generate` leaves the key out of
