@@ -12,7 +12,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | Path | What it is |
 | --- | --- |
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
-| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context, the git guard (`PreToolUse` on Bash, see below), a `PreToolUse` guard that denies remote D1 writes (always on: it has no env switch) and the opt-in `Stop` verify gate. `plugin.json` has no `version`, so every commit on `main` is a release. |
+| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context, the opt-in `SessionStart` persona hook, the git guard (`PreToolUse` on Bash, see below), a `PreToolUse` guard that denies remote D1 writes (always on: it has no env switch) and the opt-in `Stop` verify gate. `plugin.json` has no `version`, so every commit on `main` is a release. |
 | `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
 | `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace and the only marketplace source allowed (`strictKnownMarketplaces`), the enabled plugin, org-only hooks (`allowManagedHooksOnly`), login, update and retention policy, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
@@ -20,7 +20,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
 | `plugins/setkernel/policy/holds.md` | Generated. The holds as text; the plugin's SessionStart hook prints it into every Claude session. |
 | `bin/dependabot-policy` | Writes the holds into a repo's `.github/dependabot.yml` (`--check` for drift; `crosses` tells whether a version crosses a hold). Python 3, standard library only. |
-| `tests/run.sh` | Tests for the generator, the session hook, the verify gate, the D1 guard and `bin/dependabot-policy`. |
+| `tests/run.sh` | Tests for the generator, the session hook, the verify gate, the D1 guard, the persona hook and `bin/dependabot-policy`. |
 
 In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `setkernel:reviewer`.
 
@@ -51,7 +51,8 @@ git guard covers only the git commands a text rule can't pin down. The other hoo
   guard can't be switched off by a repo or user hook, and a repo's own hooks don't run.
   Side effects: it also blocks `/goal`, hooks in agent frontmatter and in a project's settings, and
   narrows `statusLine` to the managed settings. This plugin's hooks still run; a hook from a
-  GitHub-sourced mod does not.
+  GitHub-sourced mod does not, nor does a user-scope hook such as the VMs' old persona hook (its
+  replacement is the plugin's opt-in persona hook, below).
 - **Version pin**: `requiredMinimumVersion` 2.1.295 stops an older Claude Code from starting
   (`minimumVersion` only limits updates). `autoUpdatesChannel` is `latest`, because `stable` still
   resolved to 2.1.292, below the minimum. A seat below 2.1.295 has to update by hand once. The
@@ -154,6 +155,24 @@ canaried on one VM before it reaches every seat.
   session whose tree (untracked files included) is unchanged since SessionStart. A tree that
   already passed is not checked again.
 - State (baseline, last green tree, block count, last log) lives in `CLAUDE_PLUGIN_DATA`.
+
+## The persona hook (SessionStart)
+
+`hooks/persona.sh` loads a seat's persona into the session (setkernel/agent-plugins#37). It is a
+port of setkernel/hq's `agents/vm/sk-persona.sh`, a user-scope hook that `allowManagedHooksOnly`
+stops once the managed settings are pasted (setkernel/hq#332).
+It is off unless `SETKERNEL_PERSONA=1` is set in the session's environment, so a machine that still
+runs its own persona hook doesn't load it twice.
+
+- It keys on the git email: only `<name>@setkernel.com`, with a name of lowercase letters, digits
+  and `-`. It fetches `agents/personas/<name>.md` from private setkernel/hq with the machine's own
+  `gh` login and prints it as `SessionStart` `additionalContext`. Needs `gh` and `jq`.
+- **The persona text never enters this repo** (decision 0001): the hook, its tests and this README
+  hold none. It is cached owner-only (dir 700, file 600) in `CLAUDE_PLUGIN_DATA/persona`, else
+  `${XDG_CACHE_HOME:-~/.cache}/setkernel/persona`, and reused for `SETKERNEL_PERSONA_TTL` minutes
+  (360; 0 forces a fetch).
+- Anything missing (no opt-in, another domain, no `gh` or `jq`, no access, no such persona, the
+  network down with no fresh cache) means no persona: it prints nothing and exits 0.
 
 ## Try the plugin locally
 
