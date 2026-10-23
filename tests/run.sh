@@ -600,6 +600,7 @@ with_email ZZ-Test@SetKernel.COM
 expect 0 "Made-up test persona" "the email's case does not matter" -- persona_hook
 with_email zz-test@setkernel.com
 expect 0 "^silent$" "SETKERNEL_PERSONA_TTL=0 forces a fetch; with gh failing, no persona and exit 0" -- silent persona_hook SETKERNEL_PERSONA_TTL=0
+expect 0 "^2$" "and gh was called despite the fresh cache" -- gh_calls
 rm -rf "$pdata"
 expect 0 "^silent$" "gh failing with no cache: no persona, exit 0, gh's error not shown" -- silent persona_hook
 rm -f "$tmp/gh-down"
@@ -607,9 +608,14 @@ with_email zz-nobody@setkernel.com
 expect 0 "^silent$" "no such persona (gh 404): no persona, exit 0" -- silent persona_hook
 expect 1 "" "and nothing is cached for it" -- test -e "$pdata/persona/zz-nobody.md"
 with_email zz-test@setkernel.com
+persona_hook >/dev/null
+calls=$(gh_calls)
 chmod 755 "$pdata/persona"
+touch "$tmp/gh-down"
 expect 0 "Made-up test persona" "a cache dir left wider is still used" -- persona_hook
+expect 0 "^$calls$" "so gh was not called for it" -- gh_calls
 expect 0 "^drwx------" "and made owner-only again" -- ls -ld "$pdata/persona"
+rm -f "$tmp/gh-down"
 rm -rf "$pdata"
 expect 0 "Made-up test persona" "without CLAUDE_PLUGIN_DATA the cache is under XDG_CACHE_HOME" -- persona_hook CLAUDE_PLUGIN_DATA= XDG_CACHE_HOME="$tmp/persona-xdg"
 expect 0 "^-rw-------" "and owner-only there too" -- ls -l "$tmp/persona-xdg/setkernel/persona/zz-test.md"
