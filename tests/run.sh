@@ -404,6 +404,111 @@ hook_on() {
 }
 expect 2 "the worker pushes" "SETKERNEL_GUARD_NO_PUSH=1 blocks every push" -- hook_on "$tmp/feat.json" SETKERNEL_GUARD_NO_PUSH=1
 expect 0 "" "an input without a command passes" -- hook_on "$tmp/nocmd.json"
+# With SETKERNEL_GUARD_NO_PUSH=1 the guard reads the command line as the shell does (#43): text that only
+# mentions a push passes, and a push in any spelling sk-push-guard blocks is blocked. Each line gives the
+# exit code with the variable, the exit code without it (unchanged by #43), then the command, where \n
+# is a newline. They run in a repo on a feature branch, as in the issue's repros.
+nprepo=$tmp/nprepo
+mkdir -p "$nprepo" && git -C "$nprepo" init -q -b agent/1-demo
+# guard_env <dir> <command> [VAR=value…]: run the hook on a Bash call with that environment.
+guard_env() {
+  d=$1 c=$2
+  shift 2
+  # shellcheck disable=SC2086 # sh_cmd may be "busybox sh"
+  jq -n --arg c "$c" --arg d "$d" '{tool_input: {command: $c}, cwd: $d}' | env "$@" $sh_cmd "$hooks/git-guard.sh"
+}
+while IFS='|' read -r codes c; do
+  case $codes in '#'*) continue ;; esac
+  expect "${codes% *}" "" "with SETKERNEL_GUARD_NO_PUSH=1, exit ${codes% *}: $c" -- \
+    guard_env "$nprepo" "$(printf '%b' "$c")" SETKERNEL_GUARD_NO_PUSH=1
+  expect "${codes#* }" "" "without it, exit ${codes#* }: $c" -- guard_env "$nprepo" "$(printf '%b' "$c")"
+done <<'EOF'
+# Issue part 1: text that only mentions a push.
+0 0|git commit -F - <<'EOM'\ndocs: the guard\n\ngit push is the worker's job\nEOM
+0 0|git commit -m "docs: the worker pushes; git push is never run by Claude"
+0 0|cat > notes.md <<'EOM'\ngit push origin agent/1-demo\nEOM
+0 0|rg -n "; git push" docs/
+0 0|echo "run tests | git push later"
+0 0|grep -n "git push" file
+0 0|git commit -m "docs: the worker runs git push, Claude never does"
+0 0|gh pr comment 1 --body "Do not run git push; the worker does"
+0 0|git commit -m "$(cat <<'EOM'\nfix: say why\n\nThe worker runs git push; Claude doesn't.\nEOM\n)"
+0 0|cat <<EOM\nan unquoted body: git push origin x, $HOME\nEOM
+0 0|git status # git push origin x
+0 0|printf '%s\\n' 'git push origin x' "it's; git push" $'git push\\n'
+0 2|git commit -m "fix: a commit message that holds ; git push -f"
+# A real push stays blocked: plain, in sh -c, eval, $(…), backticks, a heredoc or here-string a shell runs.
+2 0|git push origin HEAD:refs/heads/x
+2 0|"git" push origin x
+2 0|sh -c "git push origin x"
+2 0|bash -lc 'cd /tmp && git push origin x'
+2 0|bash -o pipefail -c 'git push origin x'
+2 0|xargs sh -c 'git push origin x'
+2 0|sh -c 'sh -c "sh -c \\"sh -c git\\\\ push\\""'
+2 0|eval "git push origin x"
+2 0|env -S 'git push origin x'
+2 0|echo "$(git push origin x)"
+2 0|echo `git push origin x`
+2 0|echo "`git push origin x`"
+2 0|x=$(git push origin x)
+2 0|echo $((1 + $(git push origin x | wc -l)))
+2 0|git -C "$(git rev-parse --show-toplevel)" push origin x
+2 0|bash <<'EOM'\ngit push origin x\nEOM
+2 0|cat <<'EOM' | sh\ngit push origin x\nEOM
+2 0|cat <<EOM\n$(git push origin x)\nEOM
+2 0|bash <<<'git push origin x'
+2 0|cat <<'EOM'; git push origin x\nbody\nEOM
+2 0|git commit -m 'msg' # a comment\ngit push origin x
+2 0|echo a\\ #x; git push origin x
+2 0|git commit -m "an unclosed quote; git push origin x
+2 0|cat <<'EOM' |\ngit push origin x\nEOM\nbash
+2 0|bash -c "$(cat <<'EOM'\ngit push origin x\nEOM\n)"
+2 0|source /dev/stdin <<'EOM'\ngit push origin x\nEOM
+0 0|git add . && git commit -F - <<'EOM'\nthe worker's git push\nEOM
+0 0|gh pr create --title "Fix bash completion" --body-file - <<'EOM'\nthe worker's git push\nEOM
+# Like sk-push-guard: text piped into a shell, and a git word anywhere in a command, not only first.
+2 0|echo 'git push origin x' | bash
+2 0|printf 'git push origin x\\n' | env FOO=1 sh -s
+0 0|echo "git push" | grep push
+2 0|chrt 5 git push origin x
+2 0|echo git push origin x
+2 0|git $(echo -C .) push origin x
+0 0|which git && git --version
+# Issue part 2: spellings sk-push-guard blocks.
+2 0|git subtree push --prefix=d origin x
+2 0|git send-pack origin HEAD:refs/heads/x
+2 0|setsid git push origin x
+2 0|flock /tmp/l git push origin x
+2 0|flock /tmp/l -c 'git push origin x'
+2 0|ionice -c3 git push origin x
+2 0|ionice -c idle git push origin x
+2 0|exec -a x git push origin x
+2 0|git --attr-source HEAD push origin x
+2 0|git config alias.q push && git q origin x
+2 0|git config alias.q '!git push' && git q origin x
+2 0|git -C "dir with spaces" push origin x
+# The wrappers are read without the variable too, so a force push through them is blocked there as well.
+2 2|setsid git push -f origin x
+2 2|flock -w 5 /tmp/l git push -f origin x
+2 2|exec -a x git push -f origin x
+2 2|git --attr-source HEAD push -f origin x
+# Other git commands still pass.
+0 0|git config alias.st status
+0 0|git config user.name pusher
+0 0|git subtree split --prefix=d
+0 0|git log --oneline | grep push
+EOF
+# The no-push reading needs awk; without it the guard checks the raw text, as it does without the variable.
+noawk=$tmp/noawk
+mkdir -p "$noawk"
+for t in "${sh_cmd%% *}" jq sed tr git cat env; do ln -s "$(command -v "$t")" "$noawk/$t"; done
+expect 2 "the worker pushes" "without awk, SETKERNEL_GUARD_NO_PUSH=1 still blocks a push" -- \
+  guard_env "$nprepo" "git push origin x" PATH="$noawk" SETKERNEL_GUARD_NO_PUSH=1
+# busybox sh finds its own awk applet without PATH, so there is nothing to take away.
+if ! env PATH="$noawk" $sh_cmd -c 'command -v awk' >/dev/null 2>&1; then
+  expect 2 "the worker pushes" "without awk, a quoted mention is blocked, as before #43" -- \
+    guard_env "$nprepo" 'git commit -m "docs; git push later"' PATH="$noawk" SETKERNEL_GUARD_NO_PUSH=1
+fi
 # Without jq the guard still reads the command (macOS before 15 ships no jq).
 nojq=$tmp/nojq
 mkdir -p "$nojq"

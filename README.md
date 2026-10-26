@@ -46,7 +46,11 @@ git guard covers only the git commands a text rule can't pin down. The other hoo
 - **The git guard** (`plugins/setkernel/hooks/git-guard.sh`, `PreToolUse` on Bash) splits the
   command line and blocks a force push, a push to the default branch, deleting a remote branch,
   `git reset --hard` and `git clean -f`, however they are spelled (`git -C dir`, `sh -c`, aliases).
-  With `SETKERNEL_GUARD_NO_PUSH=1` in the environment (sk-agent's runs) it blocks every push.
+  With `SETKERNEL_GUARD_NO_PUSH=1` in the environment (sk-agent's runs) it blocks every push, in
+  the spellings hq's `sk-push-guard` blocks too (`git send-pack`, `git subtree push`, an alias set
+  in the same command line, a `git` word after any wrapper), and reads quotes and heredocs the way
+  the shell does: a commit message, heredoc body or search pattern that only mentions a push
+  passes, while `sh -c`, `eval`, `$(…)` and backticks are still read as commands (#43).
 - **Guards fail closed**: the git guard and the D1 guard carry `"onFailure": "block"` in `hooks.json`
   (Claude Code 2.1.295 or later), so a guard that can't start, crashes, exits other than 0 or 2, or
   times out blocks the Bash call instead of letting it through (setkernel/hq#214, hq#332). A guard
