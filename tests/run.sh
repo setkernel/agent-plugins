@@ -70,12 +70,20 @@ expect 1 "" "the update-only minimumVersion is gone" -- settings_key 'has("minim
 expect 0 '"latest"' "the update channel can reach the required minimum" -- settings_key .autoUpdatesChannel
 expect 0 "true" "claude.ai skills do not sync" -- settings_key ".syncClaudeAiSkills == false"
 expect 0 "true" "claude.ai plugins do not sync" -- settings_key ".syncClaudeAiPlugins == false"
-expect 0 "true" "managed mods only" -- settings_key '.pluginConfigs["cc-plugin-sec-default@builtin"].options.allowManagedModsOnly'
+expect 1 "" "allowManagedModsOnly is left out for now (hq#212)" -- settings_key '[.. | objects | has("allowManagedModsOnly")] | any'
 expect 0 '"1"' "managed settings are logged to OTEL" -- settings_key .env.OTEL_LOG_MANAGED_SETTINGS
-for c in "tofu apply" "tofu destroy" "gh workflow run" "wrangler secret"; do
-  expect 0 "true" "$c is denied" -- settings_key ".permissions.deny | index(\"Bash($c*)\") != null"
+# The merge, dispatch, tofu and wrangler secret denies are VM-only: they live in hq's
+# agents/vm/managed-settings.d/20-vm.json (hq#373), so the console settings leave every form of them out.
+for c in "gh pr merge" "tofu apply" "tofu destroy" "gh workflow run" "wrangler secret"; do
+  re=$(printf '%s' "$c" | sed 's/ /.*/g')
+  expect 0 "true" "$c is not denied here (VM-only)" -- settings_key "[.permissions.deny[] | select(test(\"$re\"))] == []"
 done
-expect 0 "true" "gh pr merge is denied" -- settings_key '.permissions.deny | index("Bash(gh pr merge*)") != null'
+# The console settings merge with the VMs' policy file (hq#333), and leave strictKnownMarketplaces out (hq#332);
+# the marketplace and the enabled plugin stay.
+expect 0 '"merge"' "managedSourcesBehavior is merge" -- settings_key .managedSourcesBehavior
+expect 1 "" "strictKnownMarketplaces is left out" -- settings_key 'has("strictKnownMarketplaces")'
+expect 0 "true" "the setkernel marketplace and plugin stay" -- \
+  settings_key '.extraKnownMarketplaces.setkernel.source.repo == "setkernel/agent-plugins" and .enabledPlugins["setkernel@setkernel"] == true'
 
 # The org rules load into every session: keep them to the README's 40–60 lines (#23).
 expect 0 "" "the org rules stay within 60 lines" -- test "$(wc -l <"$root/rules/org-rules.md")" -le 60
@@ -87,6 +95,15 @@ for marker in "in force as each repo's gate is qualified" 'R0: one non-author' '
 done
 expect 1 '^0$' "claudeMd drops the old review-before-merge rule" -- \
   sh -c "jq -r .claudeMd '$root/managed/settings.json' | grep -c 'review before merge'"
+# Decision 0008, the allow-test-changes rule and the account rules (#36).
+for marker in 'Every secret lives in Infisical' 'named with its reason (decision 0008)' 'No paid App is ever installed' \
+  'A revert is a new forward commit' "made only on Raghav's word" '`allow-test-changes: <reason>`' \
+  'Only Raghav$' 'never add, edit or remove it' '(vega-, rigel-, lyra-, orion-setkernel) is a real person' \
+  'only they and their own agent use it' "acts on Raghav's login, so it never posts \`/approve <sha>\` or an APPROVE review"; do
+  expect 0 "$marker" "claudeMd names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
+done
+expect 1 '^0$' "claudeMd drops Cloudflare or the vault as the home of secrets" -- \
+  sh -c "jq -r .claudeMd '$root/managed/settings.json' | grep -c 'Cloudflare or the vault'"
 
 expect 1 "stale: plugins/setkernel/policy/holds.md" "a policy edit without regenerating is drift" -- \
   sh -c "jq '.holds[0].summary = \"changed\"' '$tmp/copy/policy/versions.json' >'$tmp/v.json' && mv '$tmp/v.json' '$tmp/copy/policy/versions.json' && sh '$tmp/copy/bin/generate' --check"
@@ -155,12 +172,6 @@ git push origin +main
 git -C /srv/repo push -f
 git -C . push origin feat --force-with-lease
 git -c push.default=current push +HEAD
-tofu apply
-tofu -chdir=infra apply
-tofu -chdir=infra destroy -auto-approve
-gh workflow run x.yml
-gh -R o/r workflow run x.yml
-npx wrangler secret put X
 wrangler deploy
 npx wrangler deploy
 npx --yes wrangler deploy --env production
@@ -194,7 +205,14 @@ git status
 git commit -m "fix: force the lease"
 tofu plan
 tofu -chdir=infra plan
+tofu apply
+tofu -chdir=infra apply
+tofu -chdir=infra destroy -auto-approve
 gh workflow list
+gh workflow run x.yml
+gh -R o/r workflow run x.yml
+gh pr merge 36 --squash
+npx wrangler secret put X
 wrangler dev
 wrangler deployments list
 npx wrangler d1 execute DB --local --file seed.sql
@@ -253,6 +271,16 @@ expect 0 "typescript-6.0" "the printed holds name each hold" -- \
 hooks=$root/plugins/setkernel/hooks
 expect 0 "git-guard.sh" "the plugin registers the git guard on Bash" -- \
   jq -er '.hooks.PreToolUse[] | select(.matcher == "Bash") | .hooks[].command' "$hooks/hooks.json"
+# The guards fail closed (#36): a guard that can't start, crashes or times out blocks the call. Claude Code
+# counts any exit but 0 and 2 as a failure there, so a guard must exit 0 on input it doesn't care about.
+for g in git-guard d1-guard; do
+  expect 0 '^block$' "hooks.json blocks the call when $g.sh fails" -- \
+    jq -er ".hooks.PreToolUse[].hooks[] | select(.command | contains(\"hooks/$g.sh\")) | .onFailure" "$hooks/hooks.json"
+  for inp in '' 'not json' '{}' '{"tool_name":"Read","tool_input":{"file_path":"x"}}'; do
+    expect 0 "" "$g.sh exits 0 on input: ${inp:-empty}" -- sh -c 'printf "%s" "$1" | '"$sh_cmd"' "$2"' _ "$inp" "$hooks/$g.sh"
+  done
+done
+expect 0 '^\[\]$' "every PreToolUse hook fails closed" -- jq -c '[.hooks.PreToolUse[].hooks[] | select(.onFailure != "block")]' "$hooks/hooks.json"
 grepo=$tmp/guardrepo
 mkdir -p "$grepo" && git -C "$grepo" init -q -b feat && git -C "$grepo" -c user.name=t -c user.email=t@example.com commit -q --allow-empty -m init
 git -C "$grepo" config alias.yolo 'push --force'

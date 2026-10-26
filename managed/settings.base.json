@@ -28,23 +28,6 @@
       "Bash(git * push * -f*)",
       "Bash(git * push * +*)",
       "Bash(git * push +*)",
-      "Bash(gh pr merge*)",
-      "Bash(gh * pr merge*)",
-      "Bash(tofu apply*)",
-      "Bash(tofu * apply*)",
-      "Bash(* tofu apply)",
-      "Bash(* tofu apply *)",
-      "Bash(tofu destroy*)",
-      "Bash(tofu * destroy*)",
-      "Bash(* tofu destroy)",
-      "Bash(* tofu destroy *)",
-      "Bash(gh workflow run*)",
-      "Bash(gh * workflow run*)",
-      "Bash(* gh workflow run)",
-      "Bash(* gh workflow run *)",
-      "Bash(wrangler secret*)",
-      "Bash(* wrangler secret)",
-      "Bash(* wrangler secret *)",
       "Bash(wrangler deploy:*)",
       "Bash(* wrangler deploy)",
       "Bash(* wrangler deploy *)",
@@ -115,17 +98,7 @@
     ]
   },
   "allowManagedHooksOnly": true,
-  "strictKnownMarketplaces": [
-    {
-      "source": "github",
-      "repo": "setkernel/agent-plugins",
-      "ref": "main"
-    },
-    {
-      "source": "github",
-      "repo": "setkernel/agent-plugins"
-    }
-  ],
+  "managedSourcesBehavior": "merge",
   "extraKnownMarketplaces": {
     "setkernel": {
       "source": {
@@ -139,19 +112,12 @@
   "enabledPlugins": {
     "setkernel@setkernel": true
   },
-  "forceLoginOrgUUID": "REPLACE_WITH_SETKERNEL_ORG_UUID",
+  "forceLoginOrgUUID": "f9e1c38c-b13c-4081-b4c2-9718e72b94d1",
   "forceRemoteSettingsRefresh": true,
   "autoUpdatesChannel": "latest",
   "requiredMinimumVersion": "2.1.295",
   "syncClaudeAiSkills": false,
   "syncClaudeAiPlugins": false,
-  "pluginConfigs": {
-    "cc-plugin-sec-default@builtin": {
-      "options": {
-        "allowManagedModsOnly": true
-      }
-    }
-  },
   "cleanupPeriodDays": 365,
   "enableAllProjectMcpServers": false,
   "env": {
