@@ -112,7 +112,7 @@
   "enabledPlugins": {
     "setkernel@setkernel": true
   },
-  "forceLoginOrgUUID": "REPLACE_WITH_SETKERNEL_ORG_UUID",
+  "forceLoginOrgUUID": "f9e1c38c-b13c-4081-b4c2-9718e72b94d1",
   "forceRemoteSettingsRefresh": true,
   "autoUpdatesChannel": "latest",
   "requiredMinimumVersion": "2.1.295",
