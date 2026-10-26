@@ -14,7 +14,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
 | `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context, the opt-in `SessionStart` persona hook, the git guard (`PreToolUse` on Bash, see below), a `PreToolUse` guard that denies remote D1 writes (always on: it has no env switch) and the opt-in `Stop` verify gate. `plugin.json` has no `version`, so every commit on `main` is a release. |
 | `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
-| `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace and the only marketplace source allowed (`strictKnownMarketplaces`), the enabled plugin, org-only hooks (`allowManagedHooksOnly`), login, update and retention policy, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
+| `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace, the enabled plugin, org-only hooks (`allowManagedHooksOnly`), merging with the VMs' policy file (`managedSourcesBehavior: "merge"`), login, update and retention policy, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
 | `bin/generate` | The generator (POSIX sh + `jq`). |
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
@@ -47,6 +47,11 @@ git guard covers only the git commands a text rule can't pin down. The other hoo
   command line and blocks a force push, a push to the default branch, deleting a remote branch,
   `git reset --hard` and `git clean -f`, however they are spelled (`git -C dir`, `sh -c`, aliases).
   With `SETKERNEL_GUARD_NO_PUSH=1` in the environment (sk-agent's runs) it blocks every push.
+- **Guards fail closed**: the git guard and the D1 guard carry `"onFailure": "block"` in `hooks.json`
+  (Claude Code 2.1.295 or later), so a guard that can't start, crashes, exits other than 0 or 2, or
+  times out blocks the Bash call instead of letting it through (setkernel/hq#214, hq#332). A guard
+  must therefore exit 0 on input it doesn't care about. The field has no effect on `Stop` hooks, so
+  the verify gate doesn't carry it, and the `SessionStart` hooks can't block anything.
 - **`allowManagedHooksOnly`**: only hooks from the managed settings and this plugin run, so the
   guard can't be switched off by a repo or user hook, and a repo's own hooks don't run.
   Side effects: it also blocks `/goal`, hooks in agent frontmatter and in a project's settings, and
@@ -61,11 +66,11 @@ git guard covers only the git commands a text rule can't pin down. The other hoo
   those Macs to the `claude-code@latest` cask (`brew uninstall --cask claude-code && brew install
   --cask claude-code@latest`). There is no `requiredMaximumVersion` yet: no Claude Code hold
   exists, so Raghav sets one if he wants it.
-- **`gh pr merge`** is denied for everyone, humans' Macs included, so merging goes through the web UI.
-- **`tofu apply`, `tofu destroy`, `gh workflow run` and `wrangler secret`** are denied too (also on
-  the humans' Macs). Like every Bash rule they match the command text only: a compound command
-  (`cd infra && tofu apply`) is matched per segment, but a script, a variable or `bash -c` that runs
-  them is not.
+- **`gh pr merge`, `gh workflow run`, `tofu apply`, `tofu destroy` and `wrangler secret`** are not
+  denied here: the console settings bind the humans' Macs and Claude Lead too, and those keep merge
+  and dispatch (Raghav, 2026-10-21, hq#332). The denies are VM-only and live in setkernel/hq's
+  `agents/vm/managed-settings.d/20-vm.json` (hq#373), which applies alongside these settings because
+  of `managedSourcesBehavior: "merge"`.
 - **`pnpm deploy*`** is denied, which also blocks pnpm's built-in `pnpm deploy` (copying a workspace
   package, used in Docker builds).
 - **To verify that policy reached a seat**, `OTEL_LOG_MANAGED_SETTINGS=1` (set in `env`) makes Claude
@@ -76,7 +81,8 @@ git guard covers only the git commands a text rule can't pin down. The other hoo
 
 ### Locks that belong in the VM policy file, not here
 The console can't target groups, so anything placed there also binds the humans' Macs. These go in
-the VM-only policy file (setkernel/hq#186) with the console on `managedSourcesBehavior: "merge"`:
+the VM-only policy file (setkernel/hq#186); `managedSourcesBehavior: "merge"` in these settings makes
+both apply (hq#333):
 `strictPluginOnlyCustomization: ["hooks","mcp"]`, `crossSessionInbound: "refuse"`, model pinning
 (`availableModels`, `availableModelsMatch: "exact"`, `deniedModels`, `maxEffortLevel`), unattended
 mode as `--permission-mode auto --permission-prompts none` in place of
