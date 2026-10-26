@@ -92,7 +92,7 @@ function pop(st) { return substr(st, 1, length(st) - 1) }
 # G a ( inside $( or $((, B a backtick. Output goes to buf[lv]; each $(…), $((…)) and backtick
 # opens the next level, and a $(…) or backtick adds its level to the lines after the rest (subs).
 function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, body, cmp, hdr, hl, save, base, cs) {
-  lv++; base = lv; buf[lv] = ""
+  lv++; base = lv; buf[lv] = ""; CZ[lv] = 0
   st = mode; n = length(s); ws = 1; pend = ""; cs = 1
   for (i = 1; i <= n; i++) {
     c = substr(s, i, 1); t = substr(st, length(st))
@@ -115,15 +115,19 @@ function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, bod
       if (c != "`" && !(c == "$" && substr(s, i + 1, 1) == "(")) { emit(quo(c)); continue }
     }
     # The rest is read as commands.
-    if (c == "$" && substr(s, i + 1, 2) == "((") { emitc(PH); lv++; buf[lv] = ""; st = st "R"; i += 2; ws = 1; continue }
-    if (c == "$" && substr(s, i + 1, 1) == "(") { emitc(PH); lv++; buf[lv] = ""; st = st "P"; i++; ws = 1; continue }
+    if (c == "$" && substr(s, i + 1, 2) == "((") { emitc(PH); lv++; buf[lv] = ""; CZ[lv] = 0; st = st "R"; i += 2; ws = 1; continue }
+    if (c == "$" && substr(s, i + 1, 1) == "(") { emitc(PH); lv++; buf[lv] = ""; CZ[lv] = 0; st = st "P"; i++; ws = 1; continue }
     if (c == "`" && t == "B") { subs = subs "\n" buf[lv]; lv--; st = pop(st); ws = 0; continue }
-    if (c == "`") { emitc(PH); lv++; buf[lv] = ""; st = st "B"; ws = 1; continue }
+    if (c == "`") { emitc(PH); lv++; buf[lv] = ""; CZ[lv] = 0; st = st "B"; ws = 1; continue }
     if (c == "\\") { i++; d = substr(s, i, 1); if (d != "\n") { emitc(enc(d)); ws = 0 }; continue }
     if (c == "\047") { st = st "S"; ws = 0; continue }
     if (c == "\"") { st = st "D"; ws = 0; continue }
     if (c == "$" && substr(s, i + 1, 1) == "\047") { st = st "A"; i++; ws = 0; continue }
     if (c == "(") { emitc(c); ws = 1; if (t == "P" || t == "G" || t == "R") st = st "G"; continue }
+    # A case pattern ends in ) too: inside $(…) it does not close the $(.
+    if (ws && substr(s, i, 4) == "case" && substr(s, i + 4, 1) ~ /[ \t]/) CZ[lv]++
+    if (ws && substr(s, i, 4) == "esac" && substr(s, i + 4, 1) !~ /[A-Za-z0-9_]/ && CZ[lv] > 0) CZ[lv]--
+    if (c == ")" && t == "P" && CZ[lv] > 0) { emitc(c); ws = 1; continue }
     if (c == ")" && t == "P") { subs = subs "\n" buf[lv]; lv--; st = pop(st); ws = 0; continue }
     if (c == ")" && t == "R") { lv--; st = pop(st); if (substr(s, i + 1, 1) == ")") i++; ws = 0; continue }
     if (c == ")") { emitc(c); ws = 1; if (t == "G") st = pop(st); continue }
@@ -179,7 +183,9 @@ function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, bod
     # A pipe into a shell: the shell runs what the commands before it print, so a git push anywhere
     # in their text counts (`echo "git push" | bash`).
     if (c == "|" && mode == "C" && substr(s, i + 1, 1) != "|" && substr(s, i - 1, 1) != "|") {
-      e = substr(s, i + 1); e = substr(e, 1, index(e "\n", "\n") - 1)
+      e = substr(s, i + 1); k = index(e "\n", "\n")
+      if (substr(e, 1, k - 1) ~ /^[ \t\\]*$/) k += index(substr(e, k + 1) "\n", "\n") # the shell is on the next line
+      e = substr(e, 1, k - 1); gsub(/\\?\n/, " ", e)
       if (e ~ PIPESH && (" " substr(s, cs, i - cs) " ") ~ GITPUSH) subs = subs "\ngit push"
     }
     if (index(";&|", c)) cs = i + 1
@@ -268,11 +274,16 @@ run_code() {
 
 # scan_git <command> <arg…>: (no-push mode) check every git word after the command word too, as
 # sk-push-guard does, so a wrapper this guard doesn't know (`chrt 5 git push`, `watch git push`) still
-# counts. Quoted text is one word here, so `grep "git push"` has no git word.
+# counts. Quoted text is one word here, so `grep "git push"` has no git word. Like sk-push-guard, the
+# word after any -c (or a cluster ending in c, or --command) is checked as a command line too:
+# `find . -exec sh -c '…' \;`, `su -c '…'`, `script -qc '…'`.
 scan_git() {
   shift
+  sc=''
   while [ $# -gt 0 ]; do
-    case $1 in git | */git) shift; (check_git "$@") || exit $?; continue ;; esac
+    case $sc in --command | -*c) case $sc in --?*c) ;; *) (check_cmd "$(decode "$1")") || exit $? ;; esac ;; esac
+    case $1 in git | */git) shift; (check_git "$@") || exit $?; sc=''; continue ;; esac
+    sc=$1
     shift
   done
 }

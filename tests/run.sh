@@ -474,6 +474,12 @@ done <<'EOF'
 2 0|echo git push origin x
 2 0|git $(echo -C .) push origin x
 0 0|which git && git --version
+2 0|find . -maxdepth 0 -exec sh -c 'git push origin x' \\;
+0 0|psql -c "select 'git push'"
+2 0|echo 'git push origin x' |\nbash
+# A case pattern's ) inside $(…) does not end the $(.
+2 0|echo "$(case a in a) git push origin x;; esac)"
+0 0|case "$(uname)" in Linux) echo ok;; esac
 # Issue part 2: spellings sk-push-guard blocks.
 2 0|git subtree push --prefix=d origin x
 2 0|git send-pack origin HEAD:refs/heads/x
