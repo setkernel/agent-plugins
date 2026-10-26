@@ -3,6 +3,9 @@
 # Usage: tests/run.sh            (set SHELL_UNDER_TEST=dash or "busybox sh" to try other shells)
 set -eu
 
+# sk-agent runs export SETKERNEL_GUARD_NO_PUSH=1; the guard tests must not inherit it (hook_on sets it where wanted).
+unset SETKERNEL_GUARD_NO_PUSH
+
 root=$(cd "$(dirname "$0")/.." && pwd)
 sh_cmd=${SHELL_UNDER_TEST:-sh}
 tmp=$(mktemp -d)
@@ -722,6 +725,11 @@ skill=$root/plugins/setkernel/skills/verify/SKILL.md
 expect 0 "run \`make check\`" "the verify skill runs make check when the repo has the target" -- grep -F 'run `make check`' "$skill"
 expect 0 "needs Docker (or OrbStack)" "the verify skill reports a Docker-less run as not run" -- grep -F 'needs Docker (or OrbStack)' "$skill"
 expect 0 "Steps 3 and 4 apply either way" "the verify skill keeps the grep and setup steps with a check target" -- grep -F 'Steps 3 and 4 apply either way' "$skill"
+
+# The suite passes with SETKERNEL_GUARD_NO_PUSH=1 in its environment (as in sk-agent runs). One nested run, not recursive.
+if [ -z "${SETKERNEL_TESTS_NESTED:-}" ]; then
+  expect 0 "passed" "the suite passes with SETKERNEL_GUARD_NO_PUSH=1 inherited" -- env SETKERNEL_TESTS_NESTED=1 SETKERNEL_GUARD_NO_PUSH=1 $sh_cmd "$root/tests/run.sh"
+fi
 
 echo "$((n - failures))/$n passed"
 [ "$failures" -eq 0 ]
