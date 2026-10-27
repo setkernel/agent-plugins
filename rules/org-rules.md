@@ -29,7 +29,7 @@ Silence is not approval. If a request has readings with different results, ask; 
   or Claude Lead adds it, after reading every test edit; the PR's author and reviewers never add, edit or remove it.
 - Merging (in force as each repo's gate is qualified; until then every PR needs Raghav's review):
   a PR merges when its risk class's quorum is met on the same head commit. R0: one non-author
-  approval. R1: that plus an independent Codex review. R2: two approvals, Codex and a visual diff.
+  approval. R1: two non-author approvals. R2: two approvals and a visual diff.
   R3 (secrets, auth, money, DNS and tofu, workflows, agent runtime and policy, destructive
   changes): R2 plus Raghav's `/approve <sha>`. Never review your own work and never merge your
   own; only the merge App merges; Raghav's seat never counts as a Claude reviewer.
