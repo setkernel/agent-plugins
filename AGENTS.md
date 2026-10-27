@@ -47,7 +47,7 @@ the Claude org console. No secrets or Infisical values are involved.
 - `policy/risk.yml`: which risk class (R0 to R3) a PR is, per repo, and each class's quorum (hq#210).
   `policy/autonomy.json`: each person's level (L0 to L4) per repo, which caps the class the gate may
   merge. `policy/risk-cases.json`: cases every implementation must pass. hq#210's gate in sk-ctl
-  reads all three at a pinned commit of this repo; the comment at the top of each file says how.
+  reads all three at a pinned commit of this repo; the comment at the top of each file says what it holds.
 - `bin/check-policy`: validates those three files and runs the cases with a reference matcher
   (Python 3 standard library, like `bin/dependabot-policy`).
 - `tests/run.sh`: tests for the generator, the session hook, the verify gate, the D1 guard, the
