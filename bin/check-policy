@@ -334,10 +334,11 @@ def strings(P, where, v):
     return True
 
 
-def missing(P, where, have, floor, what):
-    have_l = {h.lower() for h in have}
+def missing(P, where, have, floor, what, exact=False):
+    norm = (lambda s: s) if exact else str.lower
+    have_n = {norm(h) for h in have}
     for x in floor:
-        if x.lower() not in have_l:
+        if norm(x) not in have_n:
             P.add(where, f"drops {x!r} ({what})")
 
 
@@ -376,6 +377,10 @@ def check_risk(risk, P):
         if ok:
             missing(P, f"{W} r3.floor", r3["floor"], FLOOR_0006, "0006's floor, tiered_merge.py:39-52 at hq de93ba3")
             missing(P, f"{W} r3.auth_words", r3["auth_words"], AUTH_WORDS_0006, "0006's auth words, tiered_merge.py:53")
+            # The matcher lowercases the path segment, not the word, so a word with a capital never matches.
+            for w in r3["auth_words"]:
+                if w != w.lower():
+                    P.add(f"{W} r3.auth_words", f"{w!r} must be lower case")
             missing(P, f"{W} r3.global", r3["global"], GLOBAL_205, "hq#205's global deny, proposed-policy.json:12-56")
             missing(P, f"{W} r3.policy", r3["policy"], POLICY_PATHS, "hq#210: policy files are R3")
             missing(P, f"{W} r3.repos", r3["repos"], R3_REPOS, "a repo where every path is R3")
@@ -392,7 +397,11 @@ def check_risk(risk, P):
             if a["from"] != "people":
                 P.add(f"{W} quorum.approvers.from", 'must be "people" (autonomy.json\'s list)')
             if strings(P, f"{W} quorum.approvers.never", a["never"]):
-                missing(P, f"{W} quorum.approvers.never", a["never"], NEVER_APPROVERS, "who never counts")
+                # Tokens, matched exactly: a gate that compares them as written must see these spellings.
+                missing(P, f"{W} quorum.approvers.never", a["never"], NEVER_APPROVERS, "who never counts", exact=True)
+                for x in a["never"]:
+                    if x not in NEVER_APPROVERS:
+                        P.add(f"{W} quorum.approvers.never", f"unknown {x!r}: must be one of {NEVER_APPROVERS}")
         cl = q["classes"]
         if keys(P, f"{W} quorum.classes", cl, set(CLASSES), CLASSES):
             prev = 1

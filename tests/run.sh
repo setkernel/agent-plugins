@@ -1056,6 +1056,12 @@ d=$(pol r3approve risk.yml '.quorum.classes.R3.extra = []')
 expect 1 "quorum.classes.R3.extra: must hold owner-r3-approval" "R3 keeps Raghav's approval" -- cpol --dir "$d"
 d=$(pol approvers risk.yml '.quorum.approvers.never -= ["owner"]')
 expect 1 "quorum.approvers.never: drops 'owner'" "the owner's seat never counts as an approver" -- cpol --dir "$d"
+d=$(pol approverscase risk.yml '.quorum.approvers.never |= map(ascii_upcase)')
+expect 1 "quorum.approvers.never: drops 'owner'" "the approver tokens match exactly, not in another case" -- cpol --dir "$d"
+d=$(pol approversunknown risk.yml '.quorum.approvers.never += ["reviewer"]')
+expect 1 "quorum.approvers.never: unknown 'reviewer'" "an unknown approver token is refused" -- cpol --dir "$d"
+d=$(pol authcase risk.yml '.r3.auth_words |= map(ascii_upcase)')
+expect 1 "r3.auth_words: 'AUTH' must be lower case" "an auth word with a capital is refused by the floor check" -- cpol --dir "$d"
 d=$(pol flags risk-cases.json '(.cases[] | select(.name == "a test and a code file") | .want.flags) = []')
 expect 1 "case 'a test and a code file' in cf-mcp-template: flags \['tests_and_code'\], want \[\]" "a case with the wrong flags fails" -- cpol --dir "$d"
 d=$(pol caselevel risk-cases.json '(.cases[] | select(.name == "pennypact docs merge at L1") | .want.level) = "L2"')
