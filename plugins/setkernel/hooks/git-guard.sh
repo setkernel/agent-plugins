@@ -246,9 +246,10 @@ function lex(s, mode,   st, t, i, n, c, d, ws, k, m, e, j, p, dq, dash, body, cm
     }
     if (index(";&|", c)) { cs = i + 1; if (lv == rawlv) { raw = 0; rawlv = -1 } }
     # { and } are words of their own only as reserved words (`{ ls; }`); elsewhere (`-C {}`, `{a,b}`)
-    # they are part of a word.
-    if (c == "{" && !(ws && substr(s, i + 1, 1) ~ /^([ \t\n]|)$/)) c = enc(c)
-    if (c == "}" && !(ws && substr(s, i + 1, 1) ~ /^([ \t\n;&|)<>]|)$/)) c = enc(c)
+    # they are part of a word. (No regex here: BSD awk rejects an empty alternative like /^(x|)$/.)
+    d = substr(s, i + 1, 1)
+    if (c == "{" && !(ws && (d == "" || index(" \t\n", d)))) c = enc(c)
+    if (c == "}" && !(ws && (d == "" || index(" \t\n;&|)<>", d)))) c = enc(c)
     emitc(c); ws = index(" \t;&|<>", c) > 0
   }
   if (st != mode) bad = 1

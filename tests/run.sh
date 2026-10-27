@@ -579,6 +579,26 @@ if ! env PATH="$noawk" $sh_cmd -c 'command -v awk' >/dev/null 2>&1; then
   expect 2 "the worker pushes" "without awk, a quoted mention is blocked, as before #43" -- \
     guard_env "$nprepo" 'git commit -m "docs; git push later"' PATH="$noawk" SETKERNEL_GUARD_NO_PUSH=1
 fi
+# The guard hides awk's errors and falls back to the raw text, so a scrub that doesn't compile on one awk
+# (BSD awk on macOS rejects some regexes gawk takes) shows only as refusals. Run scrub's program on its
+# own under each awk here, so a compile error fails loudly. The input reaches every regex, including
+# the ones awk compiles only when used.
+sed -n "/^scrub_awk='\$/,/^}'\$/p" "$hooks/git-guard.sh" | sed -e '1d' -e '$d' >"$tmp/scrub.awk"
+printf '}\n' >>"$tmp/scrub.awk"
+cat >"$tmp/scrub.in" <<'EOF'
+{ echo ${x:-a #b} "q" $(git status) `pwd` $((1 + 2)) $'a\tb' {}; } | /usr/bin/env bash <<<"$y" # c
+x=1 . ./a && cat <<'EOM' | sh
+body
+EOM
+read -r a <<< "$b"; echo done
+EOF
+for a in awk original-awk nawk mawk gawk 'busybox awk'; do
+  # shellcheck disable=SC2086 # "busybox awk" is two words
+  command -v ${a%% *} >/dev/null 2>&1 || continue
+  # shellcheck disable=SC2086
+  expect 0 "echo done" "scrub compiles and reads a command line under $a" -- \
+    env LC_ALL=C $a -f "$tmp/scrub.awk" "$tmp/scrub.in"
+done
 # Without jq the guard still reads the command (macOS before 15 ships no jq).
 nojq=$tmp/nojq
 mkdir -p "$nojq"
