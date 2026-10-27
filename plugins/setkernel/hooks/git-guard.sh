@@ -72,12 +72,12 @@ block() {
 # which the shell runs. Quoted and escaped text stays one word: its blanks, operators, quotes and
 # backslashes become control characters (decode turns them back). A $(…) or backtick, quoted or not,
 # is left in its word as the character \023 ($ph) and its command is checked on a line of its own
-# after the rest (`git -C "$(pwd)" push` still reads as a push). $((…)) is left out, but a $(…) in it
-# is checked. Comments are dropped, but not a # inside ${…}, where it is text. A here-string on a
-# line that runs a shell is kept as commands, and a pipe into a shell after text that names a git
-# push adds a `git push` line. On text it can't read (an unclosed quote, $(…) or ${…}, or a backtick
-# nested in a backtick) it exits 1, and check_cmd checks the raw text instead, as it does without
-# the variable.
+# after the rest (`git -C "$(pwd)" push` still reads as a push). A $((…)) is checked that way too:
+# bash runs `$((git push) 2>&1)` as a command, and arithmetic never reads as a push. Comments are
+# dropped, but not a # inside ${…}, where it is text. A here-string on a line that runs a shell is
+# kept as commands, and a pipe into a shell after text that names a git push adds a `git push` line.
+# On text it can't read (an unclosed quote, $(…) or ${…}, or a backtick nested in a backtick) it
+# exits 1, and check_cmd checks the raw text instead, as it does without the variable.
 scrub_awk='
 function enc(c) { return (c in E) ? E[c] : c }
 function quo(c) { return raw ? c : enc(c) }
@@ -91,8 +91,8 @@ function pop(st) { return substr(st, 1, length(st) - 1) }
 # lex(text, mode): mode C reads a command line, mode H an unquoted heredoc body. The stack st holds
 # a letter per open context: S single quote, A dollar-single quote, D double quote, P $(, R $((,
 # G a ( inside $( or $((, B a backtick, V a ${ outside quotes, W a ${ inside them. Output goes to
-# buf[lv]; each $(…), $((…)) and backtick opens the next level, and a $(…) or backtick adds its
-# level to the lines after the rest (subs).
+# buf[lv]; each $(…), $((…)) and backtick opens the next level and, when it closes, adds that level
+# to the lines after the rest (subs).
 function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, body, cmp, hdr, hl, save, base, cs) {
   lv++; base = lv; buf[lv] = ""; CZ[lv] = 0
   st = mode; n = length(s); ws = 1; pend = ""; cs = 1
@@ -144,7 +144,7 @@ function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, bod
     if (ws && substr(s, i, 4) == "esac" && substr(s, i + 4, 1) !~ /[A-Za-z0-9_]/ && CZ[lv] > 0) CZ[lv]--
     if (c == ")" && t == "P" && CZ[lv] > 0) { emitc(c); ws = 1; continue }
     if (c == ")" && t == "P") { subs = subs "\n" buf[lv]; lv--; st = pop(st); ws = 0; continue }
-    if (c == ")" && t == "R") { lv--; st = pop(st); if (substr(s, i + 1, 1) == ")") i++; ws = 0; continue }
+    if (c == ")" && t == "R") { subs = subs "\n" buf[lv]; lv--; st = pop(st); if (substr(s, i + 1, 1) == ")") i++; ws = 0; continue }
     if (c == ")") { emitc(c); ws = 1; if (t == "G") st = pop(st); continue }
     if (c == "#" && ws) { while (i < n && substr(s, i + 1, 1) != "\n") i++; continue }
     if (substr(s, i, 3) == "<<<") {

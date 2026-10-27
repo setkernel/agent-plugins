@@ -452,6 +452,10 @@ done <<'EOF'
 2 0|echo "`git push origin x`"
 2 0|x=$(git push origin x)
 2 0|echo $((1 + $(git push origin x | wc -l)))
+2 0|out=$((git push origin x) 2>&1)
+2 0|echo $((git push origin x) | cat)
+0 0|echo $(( 1 + 2 ))
+0 0|echo $((x << 2)); git status
 2 0|git -C "$(git rev-parse --show-toplevel)" push origin x
 2 0|bash <<'EOM'\ngit push origin x\nEOM
 2 0|cat <<'EOM' | sh\ngit push origin x\nEOM
