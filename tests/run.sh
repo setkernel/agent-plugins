@@ -447,6 +447,19 @@ done <<'EOF'
 2 0|sh -c 'sh -c "sh -c \\"sh -c git\\\\ push\\""'
 2 0|eval "git push origin x"
 2 0|env -S 'git push origin x'
+2 0|sh -c 'git push origin "${B:-x}"'
+2 0|bash -lc 'git push -u origin "${1:-HEAD}"'
+2 0|sudo -u bob sh -c 'git push origin ${B:+x}'
+2 0|bash -c -x 'git push origin ${B:-x}'
+2 0|bash -c 'git push ${xsh:-c}'
+2 0|env -S 'git push origin ${B:-x}'
+2 0|env -S 'git -c push.default=current push'
+2 0|env -S 'git push ${xsh:-c}'
+2 0|env -S '-i git push origin x'
+2 0|flock -w 5 /tmp/l -c 'git push ${B:+x}'
+2 2|sh -c 'git reset --hard "${R:-HEAD}"'
+0 0|sh -c 'echo ${x:-a}; ls'
+0 0|env -S 'echo ${x:-push}'
 2 0|echo "$(git push origin x)"
 2 0|echo `git push origin x`
 2 0|echo "`git push origin x`"

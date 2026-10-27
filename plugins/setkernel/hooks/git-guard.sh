@@ -312,20 +312,22 @@ run_code() {
     return 0
   fi
   while [ $# -gt 0 ]; do
-    case $rc:$1 in
-      env:-S | env:--split-string | flock*:-c | flock*:--command | *sh:--command) rf=1 ;;
-      env:-S?*) (check_cmd "$(decode "${1#-S}")") || exit $? ;;
-      env:--split-string=*) (check_cmd "$(decode "${1#*=}")") || exit $? ;;
-      env:-[uC] | flock*:-[wE] | *sh:[-+][oO]) [ $# -ge 2 ] && shift ;; # the option's value
-      *sh:--*) ;;
-      *sh:-*c*) rf=1 ;;
-      *:-* | *:+*) ;;
-      env:*=*) ;;
+    # Match on the literal kind (sh for bash, zsh, dash and ksh): with a leading *, a word that only
+    # holds :- or sh:-c (`${B:-x}`, `${xsh:-c}`) would match an option pattern and go unread.
+    case $rc in *sh) rk='sh' ;; flock-file) rk=flock ;; *) rk=$rc ;; esac
+    case $rf:$rk:$1 in
+      1:env:* | 1:flock:* | 1:sh:[!+-]* | 1:sh:) # the value of -S or -c, or sh's first operand after -c
+        (check_cmd "$(decode "$1")") || exit $?
+        return 0 ;;
+      0:env:-S | 0:env:--split-string | ?:flock:-c | ?:flock:--command | ?:sh:--command) rf=1 ;;
+      0:env:-S?*) (check_cmd "$(decode "${1#-S}")") || exit $? ;;
+      0:env:--split-string=*) (check_cmd "$(decode "${1#*=}")") || exit $? ;;
+      0:env:-[uC] | 0:flock:-[wE] | ?:sh:[-+][oO]) [ $# -ge 2 ] && shift ;; # the option's value
+      ?:sh:--*) ;;
+      ?:sh:-*c*) rf=1 ;;
+      0:env:-* | 0:flock:-* | ?:sh:[-+]*) ;;
+      0:env:[A-Za-z_]*=*) ;;
       *)
-        if [ "$rf" = 1 ]; then
-          (check_cmd "$(decode "$1")") || exit $?
-          return 0
-        fi
         [ "$rc" = flock ] || return 0
         rc=flock-file ;; # flock's first word is the lock file
     esac
