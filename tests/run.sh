@@ -534,6 +534,11 @@ done <<'EOF'
 0 0|bash <<< 'echo hi'; git commit -m "docs: the worker runs git push"
 2 0|bash <<<"$(true); git push origin x"
 2 0|<<<'git push origin x' bash
+# An escaped blank in a here-string a shell reads is decoded too; elsewhere it stays text.
+2 0|bash <<< git\\ push origin x
+2 0|sh <<< git\\ push origin x
+0 0|grep -c foo <<< git\\ push
+0 0|echo git\\ push
 # { and } split words only as reserved words, so ${…} and {} stay in their word (E). Without the
 # variable the old split still misses these, as on main.
 2 0|git -C ${PWD} push --force origin HEAD:refs/heads/x

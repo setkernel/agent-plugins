@@ -78,10 +78,10 @@ block() {
 # is checked on a line of its own after the rest (`git -C "$(pwd)" push` still reads as a push).
 # A $((…)) is checked that way too: bash runs `$((git push) 2>&1)` as a command, and arithmetic never
 # reads as a push. Comments are dropped, but not a # inside ${…}, where it is text. A here-string a
-# shell reads is kept as commands up to the end of that command, and a pipe into a shell after text
-# that names a git push adds a `git push` line. On text it can't read (an unclosed quote, $(…) or
-# ${…}, or a backtick nested in a backtick) it exits 1, and check_cmd checks the raw text instead, as
-# it does without the variable.
+# shell reads is kept as commands, its quotes and escapes decoded (`bash <<< git\ push`), up to the
+# end of that command, and a pipe into a shell after text that names a git push adds a `git push`
+# line. On text it can't read (an unclosed quote, $(…) or ${…}, or a backtick nested in a backtick)
+# it exits 1, and check_cmd checks the raw text instead, as it does without the variable.
 scrub_awk='
 function enc(c) { return (c in E) ? E[c] : c }
 function quo(c) { return raw ? c : enc(c) }
@@ -168,7 +168,7 @@ function lex(s, mode,   st, t, i, n, c, d, ws, k, m, e, j, p, dq, dash, body, cm
     if (c == "$" && substr(s, i + 1, 1) == "(") { emitc(PH); nest(); st = st "P"; i++; ws = 1; continue }
     if (c == "`" && t == "B") { subs = subs "\n" buf[lv]; lv--; st = pop(st); ws = 0; continue }
     if (c == "`") { emitc(PH); nest(); st = st "B"; ws = 1; continue }
-    if (c == "\\") { i++; d = substr(s, i, 1); if (d != "\n") { emitc(enc(d)); ws = 0 }; continue }
+    if (c == "\\") { i++; d = substr(s, i, 1); if (d != "\n") { emitc(quo(d)); ws = 0 }; continue }
     if (c == "\047") { st = st "S"; ws = 0; continue }
     if (c == "\"") { st = st "D"; ws = 0; continue }
     if (c == "$" && substr(s, i + 1, 1) == "\047") { st = st "A"; i++; ws = 0; continue }
