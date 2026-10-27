@@ -7,14 +7,19 @@
 #   - a push to the default branch (`main`, `master`, origin's HEAD), named or implied;
 #   - `git reset --hard` and `git clean -f…`.
 # Long options count in any abbreviation git accepts (`--force-w`, `--del`, `--har`).
-# With SETKERNEL_GUARD_NO_PUSH=1 in the environment (sk-agent's runs) it blocks every push.
+# With SETKERNEL_GUARD_NO_PUSH=1 in the environment (sk-agent's runs) it blocks every push, including
+# `git send-pack`, `git subtree push` and an alias set to push earlier in the same command line, and
+# reads the command line the way the shell does (scrub, below): text that only mentions a push (a
+# commit message, a heredoc body, a quoted search pattern) passes, while `sh -c "git push"`, `eval`,
+# `$(git push)` and backticks are still read as commands (#43).
 #
 # A speed bump against mistakes, not a sandbox: a script or `g=git; $g push` still gets past it.
 # A bare `git push` is checked against the current branch's name only, so a push that reaches the
 # default branch through upstream tracking (`push.default=upstream`, upstream `origin/main`) passes.
 # The branch is read before the command runs, so `git checkout main && git push` passes too.
-# It drops quotes and splits on shell operators, so a commit message that holds `; git push -f`
-# is blocked too. Exit 2 blocks the call and shows Claude the reason; exit 0 lets it through.
+# Without that variable it drops quotes and splits on shell operators, so a commit message that
+# holds `; git push -f` is blocked too. Exit 2 blocks the call and shows Claude the reason; exit 0
+# lets it through.
 # POSIX sh; reads the hook JSON with jq, or with sed where jq is missing.
 set -f
 nl='
@@ -37,6 +42,9 @@ fi
 [ -n "$cmd" ] || exit 0
 cwd=${cwd:-.}
 depth=0
+nopush=0
+if [ "${SETKERNEL_GUARD_NO_PUSH:-}" = 1 ]; then nopush=1; fi
+ph=$(printf '\023') # scrub's stand-in for a command substitution
 
 # abbrev <arg> <long-option>…: true if <arg>, minus any `=value`, is one of the options or a prefix
 # of one. git takes any unique prefix and rejects an ambiguous one, so this never blocks a command
@@ -50,7 +58,7 @@ abbrev() {
 }
 
 block() {
-  if [ "${SETKERNEL_GUARD_NO_PUSH:-}" = 1 ]; then
+  if [ "$nopush" = 1 ]; then
     echo "setkernel git guard: blocked $1. This run must not push or discard work: commit and stop; the worker pushes your branch." >&2
   else
     echo "setkernel git guard: blocked $1. The org rules say to stop and ask the owner first (When to stop). Don't retry it in another form; if the owner agrees, they run it themselves." >&2
@@ -58,12 +66,244 @@ block() {
   exit 2
 }
 
+# scrub (awk, no-push mode only) prints the command line the way the shell reads it, so text that is
+# only data is not checked as a command. A heredoc body is dropped unless a shell reads it: the
+# command that reads it runs one (`bash <<EOF`, `. /dev/stdin <<EOF`), or a later command in its
+# pipeline (`cat <<EOF | sh`), or a command it is a $(…) in (`bash -c "$(cat <<EOF …)"`); a shell
+# word elsewhere on the line (`source venv && git commit -F - <<EOF`) doesn't count. An unquoted body
+# keeps its $(…) and backticks, which the shell runs. Quoted and escaped text stays one word: its
+# blanks, operators, quotes and backslashes become control characters (decode turns them back), and
+# so do { and } unless they are reserved words (`git -C ${dir} push`, `-exec git -C {} push`).
+# A $(…) or backtick, quoted or not, is left in its word as the character \023 ($ph) and its command
+# is checked on a line of its own after the rest (`git -C "$(pwd)" push` still reads as a push).
+# A $((…)) is checked that way too: bash runs `$((git push) 2>&1)` as a command, and arithmetic never
+# reads as a push. Comments are dropped, but not a # inside ${…}, where it is text. A here-string a
+# shell reads is kept as commands, its quotes and escapes decoded (`bash <<< git\ push`), up to the
+# end of that command, and a pipe into a shell after text that names a git push adds a `git push`
+# line. On text it can't read (an unclosed quote, $(…) or ${…}, or a backtick nested in a backtick)
+# it exits 1, and check_cmd checks the raw text instead, as it does without the variable.
+scrub_awk='
+function enc(c) { return (c in E) ? E[c] : c }
+function quo(c) { return raw ? c : enc(c) }
+function emit(x) { buf[lv] = buf[lv] x }
+function emitc(x) { buf[lv] = buf[lv] x; cv = cv x }
+function shellword(t) {
+  return (" " t " ") ~ /[^A-Za-z0-9_.-]((ba|z|da|k)?sh|eval|source)[^A-Za-z0-9_]/ || (";" t) ~ /[;&|(][ \t]*\.[ \t]/
+}
+# readsh(t): true if the simple command t (scrubbed text) runs a shell: one of its words is a shell,
+# eval or source, or its command word is `.`. A redirection and its target are not words, glued or
+# not (`sh<<EOF`, `sh 2>&1`, `cat >/tmp/sh`).
+function readsh(t,   w, n, k, f) {
+  gsub(/<<<[ \t]*[^ \t;&|<>()]*/, " ", t); gsub(/<<-?/, " ", t)
+  gsub(/(&>>?|[<>]&|>>|<>|>[|]?|<)[ \t]*[^ \t;&|<>()]*/, " ", t)
+  n = split(t, w, /[ \t]+/); f = 1
+  for (k = 1; k <= n; k++) {
+    if (w[k] == "") continue
+    if (f && w[k] ~ /^([A-Za-z_][A-Za-z0-9_]*=.*|!|then|do|else|elif|if|while|until|time)$/) continue
+    if (f && w[k] == ".") return 1
+    f = 0
+    if (w[k] ~ /^([^\/]*\/)*((ba|z|da|k)?sh|eval|source)$/) return 1
+  }
+  return 0
+}
+# segat(b): where the simple command at the end of the scrubbed text b starts. The & of a
+# redirection (2>&1, <&3, &>f) does not end a command.
+function segat(b,   k, c) {
+  for (k = length(b); k > 0; k--) {
+    c = substr(b, k, 1)
+    if (c == "&" && (substr(b, k - 1, 1) ~ /[<>]/ || substr(b, k + 1, 1) == ">")) continue
+    if (index(";&|\n({", c)) break
+  }
+  return k
+}
+# hreads(j, hdr): true if a shell reads heredoc j, decided at the end of its header line hdr: its
+# command or a later one in its pipeline runs a shell, or a command it is a $(…) or backtick in does
+# (bash -c "$(cat <<EOF …)"). Where the command is hard to tell (after a } or ), or the $(…) it was
+# in has closed), any shell word on the header line counts, as before.
+function hreads(j, hdr,   p, q, m, k) {
+  if (PL[j] > lv || PG[j] != GEN[PL[j]]) return shellword(hdr)
+  # The & of a redirection or of |& (a pipe that takes stderr too) does not end the command.
+  p = substr(buf[PL[j]], PS[j] + 1); gsub(/[<>]&|&>/, ">", p); gsub(/[|]&/, "|", p)
+  if (match(p, /[;&\n]/)) p = substr(p, 1, RSTART - 1)
+  if (p ~ /[)}]/) return shellword(hdr)
+  m = split(p, q, "|")
+  for (k = 1; k <= m; k++) if (readsh(q[k])) return 1
+  for (k = PL[j] - 1; k >= 1; k--) if (readsh(substr(buf[k], segat(buf[k]) + 1))) return 1
+  return 0
+}
+function nest() { lv++; buf[lv] = ""; CZ[lv] = 0; GEN[lv]++ }
+function lineof(p) { while (ln < nl && O[ln + 1] <= p) ln++; return ln }
+function pop(st) { return substr(st, 1, length(st) - 1) }
+# lex(text, mode): mode C reads a command line, mode H an unquoted heredoc body. The stack st holds
+# a letter per open context: S single quote, A dollar-single quote, D double quote, P $(, R $((,
+# G a ( inside $( or $((, B a backtick, V a ${ outside quotes, W a ${ inside them. Output goes to
+# buf[lv]; each $(…), $((…)) and backtick opens the next level and, when it closes, adds that level
+# to the lines after the rest (subs).
+function lex(s, mode,   st, t, i, n, c, d, ws, k, m, e, j, p, dq, dash, body, cmp, hdr, hl, save, base, cs, keep) {
+  nest(); base = lv
+  st = mode; n = length(s); ws = 1; cs = 1
+  for (i = 1; i <= n; i++) {
+    c = substr(s, i, 1); t = substr(st, length(st))
+    # In a backtick the shell drops the backslash before ` and $ and reads the text again, so \` there
+    # opens a nested backtick and \$( a $(: too hard to follow, so the raw text is checked instead.
+    if (c == "\\" && index(st, "B") && t != "S" && t != "A" && substr(s, i + 1, 1) ~ /[`$]/) bad = 1
+    if (t == "S") { if (c == "\047") st = pop(st); else emit(quo(c)); continue }
+    if (t == "A") {
+      if (c == "\047") st = pop(st)
+      else if (c == "\\") { i++; d = substr(s, i, 1); emit(quo(d == "n" ? "\n" : d == "t" ? "\t" : d)) }
+      else emit(quo(c))
+      continue
+    }
+    if (t == "D" || t == "H") {
+      if (c == "\"" && t == "D") { st = pop(st); continue }
+      if (c == "\\") {
+        d = substr(s, i + 1, 1)
+        if (d == "\n") i++
+        else if (d == "$" || d == "`" || d == "\\" || (d == "\"" && t == "D")) { emit(quo(d)); i++ }
+        else emit(quo(c))
+        continue
+      }
+      if (c != "`" && !(c == "$" && substr(s, i + 1, 1) ~ /[({]/)) { emit(quo(c)); continue }
+    }
+    # In ${…} quotes, escapes, $(…) and backticks are read as in a command, the first } outside them
+    # ends it, and # is text, not a comment (echo ${x:-a #b}; git push runs the push).
+    if (t == "V" || t == "W") {
+      if (c == "}") { st = pop(st); ws = 0 }
+      if (c == "}" || index("\\\047\"`$", c) == 0) { if (t == "W") emit(quo(c)); else emitc(enc(c)); continue }
+    }
+    if (c == "$" && substr(s, i + 1, 1) == "{") {
+      if (t == "D" || t == "H" || t == "W") { emit("$" quo("{")); st = st "W" } else { emitc("$" enc("{")); st = st "V" }
+      i++; ws = 0; continue
+    }
+    # The rest is read as commands.
+    if (c == "$" && substr(s, i + 1, 2) == "((") { emitc(PH); nest(); st = st "R"; i += 2; ws = 1; continue }
+    if (c == "$" && substr(s, i + 1, 1) == "(") { emitc(PH); nest(); st = st "P"; i++; ws = 1; continue }
+    if (c == "`" && t == "B") { subs = subs "\n" buf[lv]; lv--; st = pop(st); ws = 0; continue }
+    if (c == "`") { emitc(PH); nest(); st = st "B"; ws = 1; continue }
+    if (c == "\\") { i++; d = substr(s, i, 1); if (d != "\n") { emitc(quo(d)); ws = 0 }; continue }
+    if (c == "\047") { st = st "S"; ws = 0; continue }
+    if (c == "\"") { st = st "D"; ws = 0; continue }
+    if (c == "$" && substr(s, i + 1, 1) == "\047") { st = st "A"; i++; ws = 0; continue }
+    if (c == "(") { emitc(c); ws = 1; if (t == "P" || t == "G" || t == "R") st = st "G"; continue }
+    # A case pattern ends in ) too: inside $(…) it does not close the $(.
+    if (ws && substr(s, i, 4) == "case" && substr(s, i + 4, 1) ~ /[ \t]/) CZ[lv]++
+    if (ws && substr(s, i, 4) == "esac" && substr(s, i + 4, 1) !~ /[A-Za-z0-9_]/ && CZ[lv] > 0) CZ[lv]--
+    if (c == ")" && t == "P" && CZ[lv] > 0) { emitc(c); ws = 1; continue }
+    if (c == ")" && t == "P") { subs = subs "\n" buf[lv]; lv--; st = pop(st); ws = 0; continue }
+    if (c == ")" && t == "R") { subs = subs "\n" buf[lv]; lv--; st = pop(st); if (substr(s, i + 1, 1) == ")") i++; ws = 0; continue }
+    if (c == ")") { emitc(c); ws = 1; if (t == "G") st = pop(st); continue }
+    if (c == "#" && ws) { while (i < n && substr(s, i + 1, 1) != "\n") i++; continue }
+    # A here-string a shell reads is kept as commands, up to the end of that command. Where it comes
+    # before the command word (<<<"…" bash), any shell word on the line counts.
+    if (substr(s, i, 3) == "<<<") {
+      if (mode == "C") {
+        p = substr(buf[lv], segat(buf[lv]) + 1); e = p; gsub(/[A-Za-z_][A-Za-z0-9_]*=[^ \t]*/, "", e)
+        if ((p ~ /[)}]/ || e !~ /[^ \t]/) ? shellword(L[lineof(i)]) : readsh(p)) { raw = 1; rawlv = lv }
+      }
+      emitc("<<<"); i += 2; ws = 1
+      continue
+    }
+    if (substr(s, i, 2) == "<<" && mode == "C" && index(st, "R") == 0) {
+      k = i + 2; dash = 0; d = ""; dq = 0
+      if (substr(s, k, 1) == "-") { dash = 1; k++ }
+      while (substr(s, k, 1) == " " || substr(s, k, 1) == "\t") k++
+      while (k <= n) {
+        c = substr(s, k, 1)
+        if (index(" \t\n;&|<>()", c)) break
+        if (c == "\047" || c == "\"") {
+          e = index(substr(s, k + 1), c)
+          if (!e) break
+          d = d substr(s, k + 1, e - 1); k += e + 1; dq = 1; continue
+        }
+        if (c == "\\") { d = d substr(s, k + 1, 1); k += 2; dq = 1; continue }
+        d = d c; k++
+      }
+      if (d != "") { np++; PD[np] = dash; PQ[np] = dq; PW[np] = d; PL[np] = lv; PG[np] = GEN[lv]; PS[np] = segat(buf[lv]) }
+      emitc("<<"); ws = 1
+      if (d != "") i = k - 1; else i++
+      continue
+    }
+    if (c == "\n") {
+      emitc(c); ws = 1; raw = 0; rawlv = -1; cs = i + 1; hdr = cv; cv = ""
+      if (np == 0 || mode != "C") continue
+      # The heredoc bodies start on the next line. Skip them unless a shell reads them (hreads), or
+      # the header line ends in a pipe and the line after the last body runs one. If a body has no
+      # end line, the bodies are read as commands.
+      keep = 0
+      for (j = 1; j <= np; j++) if (hreads(j, hdr)) keep = 1
+      hl = lineof(i); k = hl
+      for (j = 1; j <= np; j++) {
+        dash = PD[j]; dq = PQ[j]; d = PW[j]; body = ""
+        for (m = k + 1; m <= nl; m++) {
+          cmp = L[m]
+          if (dash == "1") sub(/^\t+/, "", cmp)
+          if (cmp == d) break
+          body = body (m > k + 1 ? "\n" : "") L[m]
+        }
+        if (m > nl) { k = hl; break }
+        if (dq == "0") { save = raw; raw = 0; lex(body, "H"); raw = save }
+        k = m
+      }
+      np = 0; cv = ""
+      if (k > hl && !keep && !(hdr ~ /\|&?[ \t\n]*$/ && shellword(L[k + 1]))) i = O[k] + length(L[k]) - 1
+      continue
+    }
+    # A pipe into a shell: the shell runs what the commands before it print, so a git push anywhere
+    # in their text counts (`echo "git push" | bash`).
+    if (c == "|" && mode == "C" && substr(s, i + 1, 1) != "|" && substr(s, i - 1, 1) != "|") {
+      e = substr(s, i + 1); k = index(e "\n", "\n")
+      if (substr(e, 1, k - 1) ~ /^[ \t\\]*$/) k += index(substr(e, k + 1) "\n", "\n") # the shell is on the next line
+      e = substr(e, 1, k - 1); gsub(/\\?\n/, " ", e)
+      if (e ~ PIPESH && (" " substr(s, cs, i - cs) " ") ~ GITPUSH) subs = subs "\ngit push"
+    }
+    # A command ends at ; & or |, but not at the & of a redirection (2>&1 | sh, &>f).
+    if (index(";&|", c) && !(c == "&" && (substr(s, i - 1, 1) ~ /[<>]/ || substr(s, i + 1, 1) == ">"))) {
+      cs = i + 1; if (lv == rawlv) { raw = 0; rawlv = -1 }
+    }
+    # { and } are words of their own only as reserved words (`{ ls; }`); elsewhere (`-C {}`, `{a,b}`)
+    # they are part of a word. (No regex here: BSD awk rejects an empty alternative like /^(x|)$/.)
+    d = substr(s, i + 1, 1)
+    if (c == "{" && !(ws && (d == "" || index(" \t\n", d)))) c = enc(c)
+    if (c == "}" && !(ws && (d == "" || index(" \t\n;&|)<>", d)))) c = enc(c)
+    emitc(c); ws = index(" \t;&|<>", c) > 0
+  }
+  if (st != mode) bad = 1
+  t = buf[base]; lv = base - 1
+  return t
+}
+BEGIN {
+  src = " \t\n;&|(){}<>`\"\047\\"
+  for (k = 1; k <= 16; k++) E[substr(src, k, 1)] = sprintf("%c", k < 9 ? k : k + 2)
+  PH = sprintf("%c", 19)
+  PIPESH = "^[ \t&]*(([A-Za-z_][A-Za-z0-9_]*=[^ \t]*|([^ \t;&|]*/)?(env|sudo|doas|command|exec|nohup|nice|time|timeout|setsid|stdbuf)|-[^ \t]*|[0-9]+)[ \t]+)*([^ \t;&|]*/)?(ba|z|da|k)?sh([ \t;&|)]|$)"
+  GITPUSH = "[^A-Za-z0-9_-]git([^A-Za-z0-9_-]|[^A-Za-z0-9_-].*[^A-Za-z0-9_-])(push|send-pack)[^A-Za-z0-9_-]"
+}
+{ s = (NR > 1) ? s "\n" $0 : $0 }
+END {
+  nl = split(s, L, "\n"); O[1] = 1
+  for (k = 1; k < nl; k++) O[k + 1] = O[k] + length(L[k]) + 1
+  ln = 1; rawlv = -1; r = lex(s, "C")
+  if (bad) exit 1
+  printf "%s%s", r, subs
+}'
+scrub() { printf '%s\n' "$1" | LC_ALL=C awk "$scrub_awk" 2>/dev/null; }
+
+# decode <word>: a word from scrub with its control characters turned back into the text they stand for.
+decode() {
+  printf '%s' "$1" | LC_ALL=C tr '\001\002\003\004\005\006\007\010\013\014\015\016\017\020\021\022' " \\t\\n;&|(){}<>\`\"'\\\\"
+}
+
 # check_cmd <text>: check each simple command in a command line.
 check_cmd() {
-  [ "$depth" -lt 4 ] || return 0
+  if [ "$depth" -ge 4 ]; then # nested too deep to follow: it passes, unless no push may run
+    if [ "$nopush" = 1 ]; then case $1 in *push* | *send-pack*) block "a git push nested too deep to read" ;; esac; fi
+    return 0
+  fi
   depth=$((depth + 1))
+  t=$1
+  if [ "$nopush" = 1 ]; then t=$(scrub "$1") || t=$1; fi
   # Drop a redirect's file descriptor number (the 2 in 2>&1) so it is not read as a git word.
-  segs=$(printf '%s\n' "$1" | tr -d "\"'\\\\" |
+  segs=$(printf '%s\n' "$t" | tr -d "\"'\\\\" |
     sed -E 's/(^|[[:space:];&|(){}`])[0-9]+([<>])/\1\2/g' |
     tr ';&|(){}<>`' '\n\n\n\n\n\n\n\n\n\n')
   IFS=$nl
@@ -77,21 +317,77 @@ check_cmd() {
   depth=$((depth - 1))
 }
 
+# run_code <command> <arg…>: (no-push mode, where quoted text is one word) check the text that a
+# shell runs with -c, eval runs, flock runs with -c or env runs with -S, as a command line of its own.
+run_code() {
+  rc=$1 rf=0
+  shift
+  if [ "$rc" = eval ]; then
+    (check_cmd "$(decode "$*")") || exit $?
+    return 0
+  fi
+  while [ $# -gt 0 ]; do
+    # Match on the literal kind (sh for bash, zsh, dash and ksh): with a leading *, a word that only
+    # holds :- or sh:-c (`${B:-x}`, `${xsh:-c}`) would match an option pattern and go unread.
+    case $rc in *sh) rk='sh' ;; flock-file) rk=flock ;; *) rk=$rc ;; esac
+    case $rf:$rk:$1 in
+      1:env:* | 1:flock:* | 1:sh:[!+-]* | 1:sh:) # the value of -S or -c, or sh's first operand after -c
+        (check_cmd "$(decode "$1")") || exit $?
+        return 0 ;;
+      0:env:-S | 0:env:--split-string | ?:flock:-c | ?:flock:--command | ?:sh:--command) rf=1 ;;
+      0:env:-S?*) (check_cmd "$(decode "${1#-S}")") || exit $? ;;
+      0:env:--split-string=*) (check_cmd "$(decode "${1#*=}")") || exit $? ;;
+      0:env:-[uC] | 0:flock:-[wE] | ?:sh:[-+][oO]) [ $# -ge 2 ] && shift ;; # the option's value
+      ?:sh:--*) ;;
+      ?:sh:-*c*) rf=1 ;;
+      0:env:-* | 0:flock:-* | ?:sh:[-+]*) ;;
+      0:env:[A-Za-z_]*=*) ;;
+      *)
+        [ "$rc" = flock ] || return 0
+        rc=flock-file ;; # flock's first word is the lock file
+    esac
+    shift
+  done
+}
+
+# scan_git <command> <arg…>: (no-push mode) check every git word after the command word too, as
+# sk-push-guard does, so a wrapper this guard doesn't know (`chrt 5 git push`, `watch git push`) still
+# counts. Quoted text is one word here, so `grep "git push"` has no git word. Like sk-push-guard, the
+# word after any -c (or a cluster ending in c, or --command) is checked as a command line too:
+# `find . -exec sh -c '…' \;`, `su -c '…'`, `script -qc '…'`.
+scan_git() {
+  [ $# -gt 0 ] || return 0 # a segment of blanks only (`{ ls; }`): dash exits 2 on a shift too many
+  shift
+  sc=''
+  while [ $# -gt 0 ]; do
+    case $sc in --command | -*c) case $sc in --?*c) ;; *) (check_cmd "$(decode "$1")") || exit $? ;; esac ;; esac
+    case $1 in git | */git) shift; (check_git "$@") || exit $?; sc=''; continue ;; esac
+    sc=$1
+    shift
+  done
+}
+
 # check_words <word…>: skip assignments and wrappers (env, sudo, sh -c, xargs, …), then check git.
-# Wrapper options that take a value are skipped for sudo -u/-g/-h, env -u/-C, nice -n, timeout -s/-k
-# and stdbuf -i/-o/-e; other wrappers' value options are not known and can get past the guard.
+# Wrapper options that take a value are skipped for sudo -u/-g/-h, doas -u, env -u/-C, nice -n,
+# ionice -c/-n/-p, flock -w/-E, exec -a, timeout -s/-k and stdbuf -i/-o/-e; other wrappers' value
+# options are not known and can get past the guard. flock's lock file is skipped too.
 # A cd or pushd moves the directory later segments read the branch and aliases from.
 check_words() {
   while [ $# -gt 0 ]; do
     case $1 in
       [A-Za-z_]*=*) shift ;;
-      env | sudo | command | builtin | exec | nohup | time | nice | stdbuf | noglob | xargs | timeout | eval | \
-        sh | bash | zsh | dash | ksh | then | do | else | if | while | until | !)
+      env | sudo | doas | command | builtin | exec | nohup | time | nice | ionice | setsid | flock | stdbuf | \
+        noglob | xargs | timeout | eval | sh | bash | zsh | dash | ksh | then | do | else | if | while | until | !)
         w=$1
         shift
+        if [ "$nopush" = 1 ]; then
+          case $w in env | eval | flock | sh | bash | zsh | dash | ksh) run_code "$w" "$@" ;; esac
+        fi
         while [ $# -gt 0 ]; do
           case $w:$1 in # options that take a value: skip it too, or it reads as the command
-            sudo:-[ughpCDRTU] | env:-[uC] | nice:-n | timeout:-[sk] | stdbuf:-[ioe]) [ $# -ge 2 ] && shift 2 && continue ;;
+            sudo:-[ughpCDRTU] | doas:-u | env:-[uC] | nice:-n | ionice:-[cnp] | flock:-[wE] | exec:-a | timeout:-[sk] | stdbuf:-[ioe])
+              [ $# -ge 2 ] && shift 2 && continue ;;
+            flock:[!-]*) w=flock-file; shift; continue ;;
           esac
           case $1 in -* | [0-9]*) shift ;; *) break ;; esac
         done
@@ -99,13 +395,15 @@ check_words() {
       *) break ;;
     esac
   done
+  if [ "$nopush" = 1 ]; then scan_git "$@"; fi
   case ${1-} in
     git | */git) shift && check_git "$@" ;;
     cd | pushd) shift
       while [ $# -gt 0 ]; do
         case $1 in --) shift; break ;; -?*) shift ;; *) break ;; esac
       done
-      case ${1-} in '' | -) ;; /*) cwd=$1 ;; *) cwd=$cwd/$1 ;; esac ;;
+      d=$(decode "${1-}")
+      case $d in '' | -) ;; /*) cwd=$d ;; *) cwd=$cwd/$d ;; esac ;;
   esac
 }
 
@@ -115,13 +413,17 @@ check_git() {
   while [ $# -gt 0 ]; do
     case $1 in
       -C) [ $# -ge 2 ] || return 0
-        case $2 in /*) dir=$2 ;; *) dir=$dir/$2 ;; esac
+        d=$(decode "$2")
+        case $d in /*) dir=$d ;; *) dir=$dir/$d ;; esac
         shift 2 ;;
       -c) # An alias set here to push, reset, clean or a shell command only serves to get past this.
-        case ${2-} in alias.*=push* | alias.*=reset* | alias.*=clean* | alias.*=!*) block "a git alias set on the command line (-c $2)" ;; esac
+        # The section name is read in any case (-c ALIAS.x=push).
+        case ${2-} in [Aa][Ll][Ii][Aa][Ss].*=push* | [Aa][Ll][Ii][Aa][Ss].*=reset* | [Aa][Ll][Ii][Aa][Ss].*=clean* | [Aa][Ll][Ii][Aa][Ss].*=!*)
+          block "a git alias set on the command line (-c $(decode "$2"))" ;;
+        esac
         [ $# -ge 2 ] || return 0
         shift 2 ;;
-      --git-dir | --work-tree | --namespace | --config-env) [ $# -ge 2 ] || return 0; shift 2 ;;
+      --git-dir | --work-tree | --namespace | --config-env | --attr-source | --super-prefix) [ $# -ge 2 ] || return 0; shift 2 ;;
       -*) shift ;;
       *) break ;;
     esac
@@ -135,6 +437,21 @@ check_git() {
     clean) for a; do
         case $a in --*) abbrev "$a" --force && block "git clean $a" ;; -f* | -[!-]*f*) block "git clean $a" ;; esac
       done ;;
+    send-pack | http-push) if [ "$nopush" = 1 ]; then block "git $sub"; fi ;;
+    *"$ph"*) # a $(…) where the subcommand goes (no-push mode): any later push word counts
+      for a; do [ "$a" = push ] && block "git … push after a command substitution"; done ;;
+    subtree) if [ "$nopush" = 1 ]; then for a; do [ "$a" = push ] && block "git subtree push"; done; fi ;;
+    config) # An alias set to push can be run later in the same command line, which the alias lookup
+      # below can't see yet (git config alias.q push && git q).
+      if [ "$nopush" = 1 ]; then
+        k=''
+        for a; do
+          case $k in [Aa][Ll][Ii][Aa][Ss].*)
+            case " $a " in *[!A-Za-z0-9_]push[!A-Za-z0-9_]* | *send-pack*) block "a git alias set to push (git config $k)" ;; esac ;;
+          esac
+          k=$a
+        done
+      fi ;;
     *) # An alias: check what it expands to, in the directory git ran it in (a subshell keeps
       # this call's cwd and dir; a block there exits 2, which is passed on).
       exp=$(git -C "$dir" config --get "alias.$sub" 2>/dev/null) || return 0
@@ -143,10 +460,11 @@ check_git() {
         *) (cwd=$dir; check_cmd "git $exp $*") || exit $? ;;
       esac ;;
   esac
+  return 0 # a check that didn't block (a last test that failed) is not a hook failure
 }
 
 check_push() {
-  [ "${SETKERNEL_GUARD_NO_PUSH:-}" = 1 ] && block "git push"
+  [ "$nopush" = 1 ] && block "git push"
   remote='' named=0
   while [ $# -gt 0 ]; do
     a=$1
