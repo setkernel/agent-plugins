@@ -1,0 +1,694 @@
+#!/usr/bin/env python3
+"""Validate the merge gate's policy: policy/risk.yml, policy/autonomy.json and policy/risk-cases.json.
+
+  bin/check-policy [--dir POLICY_DIR]
+      Exit 0: the three files are valid and every case gets its class, flags and level.
+      Exit 1: one line per problem, each naming its file and rule. Exit 2: usage.
+
+risk.yml says which class (R0-R3) a PR is; autonomy.json says who may merge which class in which
+repo (L0-L4); risk-cases.json holds the cases every implementation of the rule must pass (hq#210's
+gate in sk-ctl runs the same file). risk.yml is written as JSON, which YAML 1.2 also reads, so no
+YAML parser is needed anywhere. The reference matcher below is decision 0006's (hq
+tools/merge_gate/tiered_merge.py at de93ba3): glob_re, denied and category are ports of it.
+
+Python 3 standard library only, like bin/dependabot-policy, so it runs on the agent VMs and the
+runners. The floors at the top are copies from hq de93ba3: the policy files may add to them, never
+drop from them. A floor changes only with a change to this file.
+"""
+import fnmatch
+import json
+import os
+import re
+import sys
+
+# ---------------------------------------------------------------- floors (hq de93ba3)
+
+# tools/merge_gate/tiered_merge.py:39-52, decision 0006 §1.3.
+FLOOR_0006 = [
+    ".github/**", "**/CODEOWNERS", ".gitattributes", ".gitmodules", ".husky/**", "**/.pre-commit-config.yaml",
+    "**/AGENTS.md", "**/CLAUDE.md", "**/GEMINI.md", "**/.claude/**", "**/.agents/**", "**/.cursor/**", "**/SKILL.md",
+    "**/package.json", "**/*.lock", "**/*.lockb", "**/package-lock.json", "**/pnpm-lock.yaml", "**/pnpm-workspace.yaml",
+    "**/.npmrc", "**/.yarnrc*", "**/.pnpmfile.*", "**/.nvmrc", "**/.node-version", "**/.tool-versions",
+    "**/composer.json", "**/requirements*", "**/constraints*", "**/pyproject.toml", "**/setup.py", "**/go.mod",
+    "**/go.sum", "**/Cargo.toml", "**/Gemfile*", "**/tsconfig*.json", "**/*.config.*",
+    "**/wrangler.*", "**/Dockerfile*", "**/*compose*.y*ml", "**/*.tf", "**/*.tfvars", "**/*.tofu", "**/*.hcl",
+    "**/migrations/**", "**/*.sql", "**/functions/**", "**/_worker.*",
+    "**/.env*", "**/.dev.vars*", "**/*.pem", "**/*.key", "**/*.p12", "**/*.crt",
+    "**/hooks.*", "**/middleware.*", "**/_middleware.*",
+]
+# tiered_merge.py:53
+AUTH_WORDS_0006 = ["auth", "login", "session", "passw", "secret", "token", "crypt", "permission", "acl", "rbac",
+                   "csp", "cors", "security"]
+# tools/merge_gate/proposed-policy.json:12-56 (hq#205's global deny).
+GLOBAL_205 = [
+    "LICENSE*", "NOTICE*", "**/LICENSE*", "**/NOTICE*", "**/licenses/**", "docs/decisions/**", "agents/vm/**",
+    "**/*infisical*", "**/*infisical*/**", "**/stacks/**", "**/infra/**", "**/terraform/**", "**/*dns*", "**/*dns*/**",
+    "**/_headers", "**/_redirects", "**/_routes.json", "**/*deploy*", "**/*deploy*/**", "**/*provision*",
+    "**/*provision*/**", "**/*smoke*", "**/*smoke*/**", "**/*rollback*", "**/*rollback*/**", "**/*billing*",
+    "**/*billing*/**", "**/*payment*", "**/*payment*/**", "**/*stripe*", "**/*stripe*/**", "**/*checkout*",
+    "**/*checkout*/**", "**/*invoice*", "**/*invoice*/**", "**/*refund*", "**/*refund*/**", "**/*subscription*",
+    "**/*subscription*/**", "**/*monet*", "**/*monet*/**", "**/*money*", "**/*money*/**",
+]
+# hq#210 box 1: policy files are R3 in any repo.
+POLICY_PATHS = ["policy/**"]
+# Repos where every path is R3: 0006 md:176-180 (infrastructure, org tooling and rules, the gate itself),
+# sk-ctl (it deploys the Worker that holds setkernel-merge's key) and setkernel/evidence (hq#209).
+R3_REPOS = ["setkernel-cloudflare", "tesolutions-cloudflare", "wesi-cloudflare", "cloudflare-estate",
+            "microsoft-estate", "tesolutions-microsoft", "wesi-microsoft", "agent-plugins", "agent-kit",
+            "runner-image", ".github", ".github-private", "merge-gate", "sk-ctl", "evidence"]
+# Repos that stay at L0. 0006's never-list (tiered_merge.py:55-58), hq#205's (proposed-policy.json:57-87)
+# and setkernel-merge's "never on" list (hq#209, issuecomment-6315300661).
+NEVER = {
+    "0006": ["setkernel-cloudflare", "tesolutions-cloudflare", "wesi-cloudflare", "cloudflare-estate",
+             "microsoft-estate", "tesolutions-microsoft", "wesi-microsoft", "agent-plugins", "agent-kit",
+             "runner-image", "merge-gate", ".github", ".github-private", "mezbano", "zz-infisical-pilot",
+             "setkernel.github.io"],
+    "hq205": ["autopilot", "unifi-ddns", "unifi-ddns-setkernel", "healthos", "setkernel-com", "dotted-map-next",
+              "WAssure", "WAssureAPI", "WAssureMobile", "WAssureNext", "WAssureNextAPI", "WAssureNextMobile",
+              "WAssureNextUI", "wassurenext-web", "wassurenextweb", "wassurenextweb-base", "wesi-cloudflare",
+              "wesi-microsoft", "tesolutions", "tesolutions-ca", "tesolutions-cloudflare", "tesolutions-microsoft",
+              "soulvriti", "rea", "clef-wordpress", "bipoc", "nayya", "size-finder-extension", "recplay"],
+    "merge": ["sk-ctl", "evidence", "inbox", "WAssure*", "bipoc", "nayya", "recplay", "size-finder-extension"],
+}
+# Each repo's required_checks, only and deny in proposed-policy.json:89-203. risk.yml keeps the
+# checks and `only` unchanged and may only add to `deny`.
+REPOS_205 = {
+    "cf-mcp-template": {"required_checks": {"Typecheck": ".github/workflows/ci.yml"},
+                        "deny": ["LICENSE*", "NOTICE*"]},
+    "cf-rag-template": {"required_checks": {"Typecheck": ".github/workflows/ci.yml"},
+                        "deny": ["LICENSE*", "NOTICE*"]},
+    "pennypact": {"required_checks": {"Build, typecheck, test": ".github/workflows/ci.yml"},
+                  "only": ["**/*.md", "docs/**", "**/tests/**", "**/*.test.*", "**/*.spec.*"],
+                  "deny": ["LICENSE*", "NOTICE*", "**/licenses/**", "docs/DEPLOY.md", "apps/*/src/**",
+                           "apps/*/app/**", "apps/*/public/**"]},
+    "tenant-move": {"required_checks": {"Offline checks (3.9)": ".github/workflows/ci.yml",
+                                        "Offline checks (3.13)": ".github/workflows/ci.yml"},
+                    "deny": ["LICENSE*", "NOTICE*", "docs/PROGRAMME-STATE.md", "tests/fixtures/**"]},
+    "keelpost": {"required_checks": {"verify": ".github/workflows/ci.yml"},
+                 "deny": ["workers/**", "app/entry.server.tsx", "app/components/EmailIframe.tsx"]},
+    "devpause": {"required_checks": {"check": ".github/workflows/check.yml"},
+                 "deny": ["src/worker/**", "src/pages/Pass*", "scripts/**"]},
+    "viewsmeet": {"required_checks": {"check": ".github/workflows/check.yml"},
+                  "deny": ["src/server/**", "src/identity/**", "src/http/**", "src/assessments/**", "campaigns/**",
+                           "scripts/**", "**/*pixel*", "**/*attribution*", "**/*conversion*", "**/*canary*",
+                           "**/*scoring*", "**/*passkey*"]},
+    "setkernel-live": {"required_checks": {"validate": ".github/workflows/ci.yml"},
+                       "deny": ["src/**", "scripts/**"]},
+    "fourseasonsfarm-ca": {"required_checks": {"ci": ".github/workflows/ci.yml"},
+                           "deny": ["src/pages/api/**", "src/lib/form/**", "scripts/**"]},
+    "hautedogfinders-ca": {"required_checks": {"ci": ".github/workflows/ci.yml"},
+                           "deny": ["src/pages/api/**", "src/pages/admin/**", "src/pages/pay/**", "src/worker.*",
+                                    "src/utils/**", "scripts/**", "**/*admin*", "**/*tracking*", "**/*analytics*"]},
+    "programmes-net": {"required_checks": {"ci": ".github/workflows/ci.yml", "e2e": ".github/workflows/ci.yml"},
+                       "deny": ["src/routes/api/**", "src/lib/api/**", "src/lib/server/**", "**/+server.ts",
+                                "src/lib/analytics/**", "scripts/**"]},
+    "raghavgupta-ca": {"required_checks": {"ci": ".github/workflows/ci.yml"},
+                       "deny": ["src/pages/api/**", "src/pages/mcp.ts", "**/*analytics*", "scripts/**"]},
+}
+_LAFKA = ["**/*.min.js", "**/*.min.css", "**/*order*", "**/*order*/**", "**/*cart*", "**/*cart*/**",
+          "**/*pric*", "**/*pric*/**", "**/*shipping*", "**/*shipping*/**", "**/*tax*", "**/*tax*/**",
+          "**/*fee*", "**/*fee*/**", "**/*coupon*", "**/*coupon*/**", "**/*discount*", "**/*discount*/**",
+          "**/*deal*", "**/*deal*/**", "**/*delivery*", "**/*delivery*/**", "**/*promo*", "**/*promo*/**"]
+REPOS_205["lafka-child"] = {"required_checks": {"CI passed": ".github/workflows/ci.yml"}, "deny": _LAFKA}
+REPOS_205["lafka-theme"] = {"required_checks": {"CI passed": ".github/workflows/ci.yml"}, "deny": _LAFKA}
+REPOS_205["lafka-plugin"] = {
+    "required_checks": {"CI passed": ".github/workflows/ci.yml", "Plugin Check": ".github/workflows/plugin-check.yml"},
+    "deny": ["**/addons/**", "incl/store-api/**", "incl/woocommerce/**", "incl/analytics/**", "**/*nonce*"] + _LAFKA}
+
+# 0006's categories (tiered_merge.py:59-63) and limits (:37). The policy may narrow them, never widen.
+DOCS_0006 = ["**/*.md", "LICENSE*", "NOTICE*"] + [f"**/docs/**/*.{e}" for e in ("txt", "png", "jpg", "jpeg", "gif", "webp")]
+TESTS_0006 = ["**/test/**", "**/tests/**", "**/__tests__/**", "**/e2e/**", "**/*.test.*", "**/*.spec.*",
+              "**/test_*.py", "**/*_test.py", "**/*_test.go", "**/test-*.sh"]
+CODE_EXTS_0006 = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".go", ".rs", ".php", ".rb", ".java", ".kt",
+                  ".swift", ".c", ".h", ".cpp", ".cs", ".css", ".scss", ".html", ".svelte", ".vue", ".astro"]
+LIMITS_0006 = {"files": 20, "lines": 1000, "code_files": 3, "code_lines": 40}
+
+CLASSES = ["R0", "R1", "R2", "R3"]
+LEVELS = ["L0", "L1", "L2", "L3", "L4"]
+# What each level lets the gate merge (the issue's table). Pinned here: autonomy.json must say the same.
+LEVEL_MAX_CLASS = {"L0": None, "L1": "R0", "L2": "R1", "L3": "R2", "L4": "R3"}
+# R2 merges wait for P4 (0007 md:283), so no level above L2 until a change to this file.
+CEILING = "L2"
+# The compare API lists at most 300 files: a diff that long may hide files, so it is R3.
+LISTED_FILES = 300
+STATUSES = {"added", "removed", "modified", "renamed", "copied", "changed", "unchanged"}
+FLAGS = ["tests_and_code"]
+EVIDENCE = ["green", "green-on-merge-candidate"]
+EXTRAS = ["visual-diff", "rollback-note", "canary", "owner-r3-approval"]
+NEVER_APPROVERS = ["author", "committer", "pusher", "owner", "bot"]
+
+
+# ---------------------------------------------------------------- the reference matcher
+
+def glob_re(pat):
+    """tiered_merge.py:175-189. `**/` is any number of directories, `**` anything, `*` and `?` stay in one segment."""
+    out, i = "", 0
+    while i < len(pat):
+        if pat.startswith("**/", i):
+            out, i = out + "(?:.*/)?", i + 3
+        elif pat.startswith("**", i):
+            out, i = out + ".*", i + 2
+        elif pat[i] == "*":
+            out, i = out + "[^/]*", i + 1
+        elif pat[i] == "?":
+            out, i = out + "[^/]", i + 1
+        else:
+            out, i = out + re.escape(pat[i]), i + 1
+    return out + r"\Z"
+
+
+def matches(path, patterns, ignore_case=False):
+    flags = re.S | (re.I if ignore_case else 0)
+    return any(re.match(glob_re(p), path, flags) for p in patterns)
+
+
+def code_ext(path, exts):
+    return os.path.splitext(path)[1].lower() in exts
+
+
+def category(path, cats, extras):
+    """'test', 'doc', 'code' or None (tiered_merge.py:204-212). A file with a code extension is never a doc."""
+    if matches(path, cats["tests"] + extras.get("tests", [])):
+        return "test"
+    if not code_ext(path, cats["code_extensions"]) and matches(path, cats["docs"] + extras.get("docs", [])):
+        return "doc"
+    if code_ext(path, cats["code_extensions"]) or matches(path, extras.get("code", [])):
+        return "code"
+    return None
+
+
+def repo_entry(risk, repo):
+    for name, entry in risk["repos"].items():
+        if name.lower() == repo.lower():
+            return entry
+    return {}
+
+
+def classify(risk, repo, files):
+    """-> (class, flags, reasons). `files` are risk-cases.json file objects: path, status, additions,
+    deletions, old_path, base_mode, head_mode, binary. The highest class any rule gives wins."""
+    r3, rp = risk["r3"], repo_entry(risk, repo)
+    deny = r3["floor"] + r3["global"] + r3["policy"] + rp.get("deny", [])
+    cats, lim = risk["categories"], risk["limits"]
+    extras = {k: rp.get(k, []) for k in ("docs", "tests", "code")}
+    reasons = {c: [] for c in CLASSES}
+
+    if repo.lower() in {r.lower() for r in r3["repos"]}:
+        reasons["R3"].append(f"every path in {repo} is R3")
+    if not files:
+        reasons["R3"].append("no changed files")
+    if len(files) >= LISTED_FILES:
+        reasons["R3"].append(f"{len(files)} files: the compare API lists at most {LISTED_FILES}")
+    for f in files:
+        paths = [f["path"]] + ([f["old_path"]] if f.get("old_path") else [])
+        for p in paths:
+            if re.search(r"[\x00-\x1f\x7f]", p):
+                reasons["R3"].append(f"{p!r} has a control character")
+            if matches(p, deny, ignore_case=True):
+                reasons["R3"].append(f"{p} matches an R3 pattern")
+            if any(w in seg.lower() for seg in p.split("/") for w in r3["auth_words"]):
+                reasons["R3"].append(f"{p} has an auth word in a path segment")
+            if "only" in rp and not matches(p, rp["only"]):
+                reasons["R3"].append(f"{p} is outside {repo}'s only")
+        modes = {f.get("base_mode"), f.get("head_mode")}
+        if modes & {"120000", "160000"}:
+            reasons["R3"].append(f"{f['path']} is a symlink or submodule")
+        elif f.get("base_mode") and f.get("head_mode") and f["base_mode"] != f["head_mode"]:
+            reasons["R3"].append(f"{f['path']} changes its mode")
+
+    lines = sum(f.get("additions", 0) + f.get("deletions", 0) for f in files)
+    if len(files) > lim["files"]:
+        reasons["R2"].append(f"{len(files)} files (limit {lim['files']})")
+    if lines > lim["lines"]:
+        reasons["R2"].append(f"{lines} lines (limit {lim['lines']})")
+    code, tests = [], False
+    for f in files:
+        c = category(f["path"], cats, extras)
+        tests = tests or c == "test"
+        if c is None:
+            reasons["R2"].append(f"{f['path']} is not a doc, test or code file")
+        if f.get("old_path"):
+            pc = category(f["old_path"], cats, extras)
+            tests = tests or pc == "test"
+            if pc is None:
+                reasons["R2"].append(f"{f['old_path']} (old path) is not a doc, test or code file")
+            elif pc == "code":
+                c = "code"
+            if pc == "test" and f["status"] == "renamed":
+                reasons["R2"].append(f"test {f['old_path']} is renamed away")
+        if f["status"] == "removed" and c == "test":
+            reasons["R2"].append(f"test {f['path']} is deleted")
+        if c == "code":
+            code.append(f)
+    code_lines = sum(f.get("additions", 0) + f.get("deletions", 0) for f in code)
+    if len(code) > lim["code_files"]:
+        reasons["R2"].append(f"{len(code)} code files (limit {lim['code_files']})")
+    if code_lines > lim["code_lines"]:
+        reasons["R2"].append(f"{code_lines} code lines (limit {lim['code_lines']})")
+    for f in code:
+        if f["status"] != "modified":
+            reasons["R2"].append(f"code file {f['path']} is {f['status']}, not modified")
+        elif f.get("binary") or not f.get("additions", 0) + f.get("deletions", 0):
+            reasons["R2"].append(f"code file {f['path']} has no line diff")
+    if code:
+        reasons["R1"].append(f"{len(code)} code file(s), {code_lines} lines")
+
+    cls = next((c for c in reversed(CLASSES) if reasons[c]), "R0")
+    flags = ["tests_and_code"] if tests and code else []
+    return cls, flags, reasons[cls]
+
+
+def level_of(autonomy, repo, author_id):
+    """The author's level in the repo, by user id, never above the repo's max. Anyone unlisted is L0."""
+    entry = next((e for n, e in autonomy["repos"].items() if n.lower() == repo.lower()), None)
+    login = next((lg for lg, i in autonomy["people"].items() if i == author_id), None)
+    if entry is None or login is None or author_id == autonomy["owner"]["id"]:
+        return "L0"
+    lv = next((v for lg, v in entry["people"].items() if lg.lower() == login.lower()), "L0")
+    return min(lv, entry["max"], key=LEVELS.index)
+
+
+def route(level, cls):
+    top = LEVEL_MAX_CLASS[level]
+    return "gate" if top is not None and CLASSES.index(cls) <= CLASSES.index(top) else "owner"
+
+
+# ---------------------------------------------------------------- validation
+
+class Problems:
+    def __init__(self):
+        self.lines = []
+
+    def add(self, where, msg):
+        self.lines.append(f"{where}: {msg}")
+
+
+def load(path, P):
+    name = os.path.basename(path)
+    dupes = []
+
+    def pairs_hook(kv):
+        seen = set()
+        for k, _ in kv:
+            if k in seen:
+                dupes.append(k)
+            seen.add(k)
+        return kv
+
+    try:
+        with open(path, encoding="utf-8") as fh:
+            pairs = json.load(fh, object_pairs_hook=pairs_hook)
+    except OSError as e:
+        P.add(name, f"can't read ({e.strerror})")
+        return None
+    except ValueError as e:
+        P.add(name, f"not JSON, so not the JSON form of YAML this file must keep ({e})")
+        return None
+    if not isinstance(pairs, list) or not pairs or pairs[0][0] != "$comment":
+        P.add(name, 'must be an object whose first key is "$comment"')
+        return None
+    if dupes:
+        P.add(name, f"key {dupes[0]!r} appears twice in one object: parsers keep only the last")
+        return None
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def keys(P, where, obj, allowed, required=()):
+    if not isinstance(obj, dict):
+        P.add(where, "must be an object")
+        return False
+    for k in obj:
+        if k not in allowed and k != "$comment":
+            P.add(where, f"unknown key {k!r}")
+    for k in required:
+        if k not in obj:
+            P.add(where, f"missing key {k!r}")
+    return all(k in obj for k in required)
+
+
+def strings(P, where, v):
+    if not isinstance(v, list) or not all(isinstance(s, str) and s for s in v):
+        P.add(where, "must be a list of non-empty strings")
+        return False
+    return True
+
+
+def missing(P, where, have, floor, what):
+    have_l = {h.lower() for h in have}
+    for x in floor:
+        if x.lower() not in have_l:
+            P.add(where, f"drops {x!r} ({what})")
+
+
+def check_risk(risk, P):
+    W = "risk.yml"
+    if not keys(P, W, risk, {"version", "limits", "categories", "r3", "flags", "quorum", "repos"},
+                {"version", "limits", "categories", "r3", "flags", "quorum", "repos"}):
+        return False
+    ok = True
+    if risk["version"] != 1:
+        P.add(W, "version must be 1")
+    if keys(P, f"{W} limits", risk["limits"], set(LIMITS_0006), LIMITS_0006):
+        for k, v in risk["limits"].items():
+            if k in LIMITS_0006 and (not isinstance(v, int) or isinstance(v, bool) or not 0 <= v <= LIMITS_0006[k]):
+                P.add(f"{W} limits.{k}", f"must be a whole number from 0 to 0006's {LIMITS_0006[k]}")
+                ok = False
+    else:
+        ok = False
+    cats = risk["categories"]
+    if keys(P, f"{W} categories", cats, {"docs", "tests", "code_extensions"}, ("docs", "tests", "code_extensions")):
+        for k, floor in (("docs", DOCS_0006), ("tests", TESTS_0006), ("code_extensions", CODE_EXTS_0006)):
+            if strings(P, f"{W} categories.{k}", cats[k]):
+                for x in cats[k]:
+                    if x not in floor:
+                        P.add(f"{W} categories.{k}", f"{x!r} is not in 0006's list: a category may narrow, never widen")
+            else:
+                ok = False
+    else:
+        ok = False
+    r3 = risk["r3"]
+    if keys(P, f"{W} r3", r3, {"repos", "floor", "auth_words", "global", "policy"},
+            ("repos", "floor", "auth_words", "global", "policy")):
+        for k in r3:
+            if k != "$comment" and not strings(P, f"{W} r3.{k}", r3[k]):
+                ok = False
+        if ok:
+            missing(P, f"{W} r3.floor", r3["floor"], FLOOR_0006, "0006's floor, tiered_merge.py:39-52 at hq de93ba3")
+            missing(P, f"{W} r3.auth_words", r3["auth_words"], AUTH_WORDS_0006, "0006's auth words, tiered_merge.py:53")
+            missing(P, f"{W} r3.global", r3["global"], GLOBAL_205, "hq#205's global deny, proposed-policy.json:12-56")
+            missing(P, f"{W} r3.policy", r3["policy"], POLICY_PATHS, "hq#210: policy files are R3")
+            missing(P, f"{W} r3.repos", r3["repos"], R3_REPOS, "a repo where every path is R3")
+    else:
+        ok = False
+    if keys(P, f"{W} flags", risk["flags"], set(FLAGS), FLAGS):
+        for k, v in risk["flags"].items():
+            if k != "$comment" and not (isinstance(v, str) and v):
+                P.add(f"{W} flags.{k}", "must be a description")
+    q = risk["quorum"]
+    if keys(P, f"{W} quorum", q, {"approvers", "classes"}, ("approvers", "classes")):
+        a = q["approvers"]
+        if keys(P, f"{W} quorum.approvers", a, {"from", "never"}, ("from", "never")):
+            if a["from"] != "people":
+                P.add(f"{W} quorum.approvers.from", 'must be "people" (autonomy.json\'s list)')
+            if strings(P, f"{W} quorum.approvers.never", a["never"]):
+                missing(P, f"{W} quorum.approvers.never", a["never"], NEVER_APPROVERS, "who never counts")
+        cl = q["classes"]
+        if keys(P, f"{W} quorum.classes", cl, set(CLASSES), CLASSES):
+            prev = 1
+            for c in CLASSES:
+                e = cl[c]
+                if not keys(P, f"{W} quorum.classes.{c}", e, {"evidence", "approvals", "extra"},
+                            ("evidence", "approvals", "extra")):
+                    continue
+                if e["evidence"] not in EVIDENCE:
+                    P.add(f"{W} quorum.classes.{c}.evidence", f"unknown evidence {e['evidence']!r}")
+                n = e["approvals"]
+                if not isinstance(n, int) or isinstance(n, bool) or n < prev:
+                    P.add(f"{W} quorum.classes.{c}.approvals", f"must be a whole number, at least 1 and at least the class below's ({prev})")
+                else:
+                    prev = n
+                if isinstance(e["extra"], list):
+                    for x in e["extra"]:
+                        if x not in EXTRAS:
+                            P.add(f"{W} quorum.classes.{c}.extra", f"unknown extra {x!r}")
+                else:
+                    P.add(f"{W} quorum.classes.{c}.extra", "must be a list")
+            if "R1" in cl and isinstance(cl["R1"], dict) and cl["R1"].get("evidence") != "green-on-merge-candidate":
+                P.add(f"{W} quorum.classes.R1.evidence", "must be green-on-merge-candidate (0007 md:60)")
+            if "R3" in cl and isinstance(cl["R3"], dict) and "owner-r3-approval" not in (cl["R3"].get("extra") or []):
+                P.add(f"{W} quorum.classes.R3.extra", "must hold owner-r3-approval")
+    repos = risk["repos"]
+    if not isinstance(repos, dict):
+        P.add(f"{W} repos", "must be an object")
+        return False
+    seen = set()
+    for name, rp in repos.items():
+        if name == "$comment":
+            continue
+        w = f"{W} repos.{name}"
+        if name.lower() in seen:
+            P.add(w, "listed twice")
+        seen.add(name.lower())
+        if not keys(P, w, rp, {"required_checks", "only", "deny", "docs", "tests", "code"}):
+            ok = False
+            continue
+        for k in ("only", "deny", "docs", "tests", "code"):
+            if k in rp and not strings(P, f"{w}.{k}", rp[k]):
+                ok = False
+        rc = rp.get("required_checks")
+        if rc is not None and not (isinstance(rc, dict) and all(isinstance(v, str) and v for v in rc.values())):
+            P.add(f"{w}.required_checks", "must map each check name to its workflow file")
+        base = {n.lower(): b for n, b in REPOS_205.items()}.get(name.lower())
+        if base:
+            if rc != base["required_checks"]:
+                P.add(f"{w}.required_checks", f"must be hq#205's, unchanged: {json.dumps(base['required_checks'])}")
+            if rp.get("only") != base.get("only"):
+                P.add(f"{w}.only", f"must be hq#205's, unchanged: {json.dumps(base.get('only'))}")
+            missing(P, f"{w}.deny", rp.get("deny", []), base["deny"], "hq#205's deny for this repo")
+    return ok
+
+
+def check_autonomy(auto, risk, P):
+    W = "autonomy.json"
+    if not keys(P, W, auto, {"version", "levels", "default", "owner", "people", "never", "repos"},
+                {"version", "levels", "default", "owner", "people", "never", "repos"}):
+        return False
+    ok = True
+    if auto["version"] != 1:
+        P.add(W, "version must be 1")
+    if auto["levels"] != LEVEL_MAX_CLASS:
+        P.add(f"{W} levels", f"must be {json.dumps(LEVEL_MAX_CLASS)}: the levels change only with bin/check-policy")
+    if auto["default"] != "L0":
+        P.add(f"{W} default", "must be L0")
+    o = auto["owner"]
+    if keys(P, f"{W} owner", o, {"login", "id"}, ("login", "id")):
+        if not isinstance(o["id"], int) or isinstance(o["id"], bool) or o["id"] <= 0:
+            P.add(f"{W} owner.id", "must be a GitHub user id")
+    else:
+        ok = False
+    people = auto["people"]
+    if not isinstance(people, dict):
+        P.add(f"{W} people", "must map each login to its user id")
+        return False
+    ids, logins = {}, set()
+    for lg, i in people.items():
+        if lg == "$comment":
+            continue
+        if not isinstance(i, int) or isinstance(i, bool) or i <= 0:
+            P.add(f"{W} people.{lg}", "must be a GitHub user id")
+            ok = False
+        elif i in ids:
+            P.add(f"{W} people.{lg}", f"has the same id as {ids[i]}")
+        else:
+            ids[i] = lg
+        if lg.lower() in logins:
+            P.add(f"{W} people.{lg}", "listed twice")
+        logins.add(lg.lower())
+        if lg.lower().endswith("[bot]"):
+            P.add(f"{W} people.{lg}", "a bot is never a person: bots stay at L0")
+        if isinstance(o, dict) and (lg.lower() == str(o.get("login", "")).lower() or i == o.get("id")):
+            P.add(f"{W} people.{lg}", "the owner is L0 as an author everywhere and never counts as a reviewer")
+    if isinstance(o, dict) and str(o.get("login", "")).lower().endswith("[bot]"):
+        P.add(f"{W} owner.login", "a bot can't be the owner")
+    nv = auto["never"]
+    never = []
+    if keys(P, f"{W} never", nv, set(NEVER), NEVER):
+        for k in NEVER:
+            if strings(P, f"{W} never.{k}", nv[k]):
+                missing(P, f"{W} never.{k}", nv[k], NEVER[k], "a repo that stays at L0")
+                never += nv[k]
+    never_pats = [n.lower() for n in never] + [r.lower() for r in R3_REPOS] + \
+        ([r.lower() for r in risk["r3"]["repos"]] if risk and isinstance(risk.get("r3"), dict) and
+         isinstance(risk["r3"].get("repos"), list) else [])
+    repos = auto["repos"]
+    if not isinstance(repos, dict):
+        P.add(f"{W} repos", "must be an object")
+        return False
+    risk_repos = {n.lower(): e for n, e in (risk or {}).get("repos", {}).items()} if risk else {}
+    seen = set()
+    for name, e in repos.items():
+        if name == "$comment":
+            continue
+        w = f"{W} repos.{name}"
+        if name.lower() in seen:
+            P.add(w, "listed twice")
+        seen.add(name.lower())
+        if not keys(P, w, e, {"max", "people"}, ("max", "people")):
+            ok = False
+            continue
+        mx = e["max"]
+        if mx not in LEVELS:
+            P.add(f"{w}.max", f"unknown level {mx!r}")
+            ok = False
+            continue
+        if LEVELS.index(mx) > LEVELS.index(CEILING):
+            P.add(f"{w}.max", f"{mx} is above {CEILING}: R2 merges wait for P4 (0007 md:283)")
+        if not isinstance(e["people"], dict):
+            P.add(f"{w}.people", "must map logins to levels")
+            ok = False
+            continue
+        top = mx
+        for lg, lv in e["people"].items():
+            if lv not in LEVELS:
+                P.add(f"{w}.people.{lg}", f"unknown level {lv!r}")
+                ok = False
+                continue
+            if lg.lower().endswith("[bot]"):
+                P.add(f"{w}.people.{lg}", "a bot is never listed: bots stay at L0")
+            elif isinstance(o, dict) and lg.lower() == str(o.get("login", "")).lower():
+                P.add(f"{w}.people.{lg}", "the owner is L0 as an author everywhere")
+            elif lg.lower() not in logins:
+                P.add(f"{w}.people.{lg}", "not in people, so the gate can't match an id to it")
+            if LEVELS.index(lv) > LEVELS.index(mx):
+                P.add(f"{w}.people.{lg}", f"{lv} is above the repo's max {mx}")
+            if LEVELS.index(lv) > LEVELS.index(CEILING):
+                P.add(f"{w}.people.{lg}", f"{lv} is above {CEILING}: R2 merges wait for P4 (0007 md:283)")
+            top = max(top, lv, key=LEVELS.index)
+        if top != "L0":
+            if any(fnmatch.fnmatchcase(name.lower(), pat) for pat in never_pats):
+                P.add(w, f"is on the never side, so it stays at L0 (it is at {top})")
+            rp = risk_repos.get(name.lower())
+            if risk and not (isinstance(rp, dict) and rp.get("required_checks")):
+                P.add(w, f"is at {top} but risk.yml has no entry with required_checks for it")
+    return ok
+
+
+def check_probes(risk, auto, P):
+    """Whatever the rest says, a policy file is R3 in every repo, and every path in an R3 repo is R3."""
+    repos = set(risk["repos"]) | set(auto["repos"] if auto else {}) | {"any-unlisted-repo"}
+    repos.discard("$comment")
+    for repo in sorted(repos):
+        for p in ("policy/risk.yml", "policy/autonomy.json", "policy/README.md"):
+            cls = classify(risk, repo, [{"path": p, "status": "modified", "additions": 1, "deletions": 0}])[0]
+            if cls != "R3":
+                P.add("risk.yml", f"{p} in {repo} is {cls}, not R3 (policy/** is R3 in every repo)")
+    for repo in sorted(set(R3_REPOS) | set(risk["r3"]["repos"])):
+        for p in ("README.md", "docs/a.md", "tests/a.test.ts"):
+            cls = classify(risk, repo, [{"path": p, "status": "modified", "additions": 1, "deletions": 0}])[0]
+            if cls != "R3":
+                P.add("risk.yml", f"{p} in {repo} is {cls}, not R3 (every path in {repo} is R3)")
+
+
+def check_cases(cases, risk, auto, P):
+    W = "risk-cases.json"
+    if not keys(P, W, cases, {"version", "cases"}, ("version", "cases")):
+        return 0
+    if cases["version"] != 1:
+        P.add(W, "version must be 1")
+    if not isinstance(cases["cases"], list) or not cases["cases"]:
+        P.add(f"{W} cases", "must be a non-empty list")
+        return 0
+    run, names = 0, set()
+    for i, c in enumerate(cases["cases"]):
+        w = f"{W} cases[{i}]"
+        if not keys(P, w, c, {"name", "repos", "author", "files", "want"}, ("name", "repos", "author", "files", "want")):
+            continue
+        w = f"{W} case {c['name']!r}"
+        if c["name"] in names:
+            P.add(w, "name used twice")
+        names.add(c["name"])
+        a = c["author"]
+        if not keys(P, f"{w} author", a, {"login", "id"}, ("login", "id")):
+            continue
+        if not isinstance(a["id"], int) or isinstance(a["id"], bool):
+            P.add(f"{w} author.id", "must be a GitHub user id")
+            continue
+        good = isinstance(c["files"], list)
+        if not good:
+            P.add(f"{w} files", "must be a list")
+        for j, f in enumerate(c["files"] if good else []):
+            fw = f"{w} files[{j}]"
+            if not keys(P, fw, f, {"path", "status", "additions", "deletions", "old_path", "base_mode", "head_mode",
+                                   "binary"}, ("path", "status", "additions", "deletions")):
+                good = False
+                continue
+            if f["status"] not in STATUSES:
+                P.add(fw, f"unknown status {f['status']!r}")
+                good = False
+            for k in ("path", "old_path", "base_mode", "head_mode"):
+                if k in f and not (isinstance(f[k], str) and f[k]):
+                    P.add(f"{fw}.{k}", "must be a non-empty string")
+                    good = False
+            if "binary" in f and not isinstance(f["binary"], bool):
+                P.add(f"{fw}.binary", "must be true or false")
+                good = False
+            for k in ("additions", "deletions"):
+                if not isinstance(f[k], int) or isinstance(f[k], bool) or f[k] < 0:
+                    P.add(f"{fw}.{k}", "must be a whole number")
+                    good = False
+        want = c["want"]
+        if not keys(P, f"{w} want", want, {"class", "flags", "level", "route"}, ("class", "flags")):
+            continue
+        if want["class"] not in CLASSES:
+            P.add(f"{w} want.class", f"unknown class {want['class']!r}")
+            good = False
+        if not isinstance(want["flags"], list) or any(x not in FLAGS for x in want["flags"]):
+            P.add(f"{w} want.flags", f"must be a list of known flags {FLAGS}")
+            good = False
+        if "level" in want and want["level"] not in LEVELS:
+            P.add(f"{w} want.level", f"unknown level {want['level']!r}")
+            good = False
+        if "route" in want and want["route"] not in ("gate", "owner"):
+            P.add(f"{w} want.route", 'must be "gate" or "owner"')
+            good = False
+        if c["repos"] == "*":
+            repos = [r for r in risk["repos"] if r != "$comment"]
+        elif isinstance(c["repos"], list) and c["repos"] and all(isinstance(r, str) for r in c["repos"]):
+            repos = c["repos"]
+        else:
+            P.add(f"{w} repos", 'must be "*" or a non-empty list of repo names')
+            continue
+        if not good:
+            continue
+        for repo in repos:
+            run += 1
+            cls, flags, why = classify(risk, repo, c["files"])
+            got = []
+            if cls != want["class"]:
+                got.append(f"class {cls}, want {want['class']} ({'; '.join(why) or 'no rule fired'})")
+            if sorted(flags) != sorted(want["flags"]):
+                got.append(f"flags {flags}, want {want['flags']}")
+            if auto and ("level" in want or "route" in want):
+                lv = level_of(auto, repo, a["id"])
+                if "level" in want and lv != want["level"]:
+                    got.append(f"level {lv}, want {want['level']}")
+                if "route" in want and route(lv, cls) != want["route"]:
+                    got.append(f"route {route(lv, cls)}, want {want['route']}")
+            for g in got:
+                P.add(f"{w} in {repo}", g)
+    return run
+
+
+def main(argv):
+    root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    d = os.path.join(root, "policy")
+    args = list(argv)
+    if args[:1] == ["--dir"] and len(args) == 2:
+        d = args[1]
+    elif args:
+        print("usage: bin/check-policy [--dir POLICY_DIR]", file=sys.stderr)
+        return 2
+    P = Problems()
+    risk = load(os.path.join(d, "risk.yml"), P)
+    auto = load(os.path.join(d, "autonomy.json"), P)
+    cases = load(os.path.join(d, "risk-cases.json"), P)
+    risk_ok = risk is not None and check_risk(risk, P)
+    auto_ok = auto is not None and check_autonomy(auto, risk if risk_ok else None, P)
+    run = 0
+    if risk_ok:
+        check_probes(risk, auto if auto_ok else None, P)
+        if cases is not None:
+            run = check_cases(cases, risk, auto if auto_ok else None, P)
+    for line in P.lines:
+        print(f"check-policy: {line}")
+    if P.lines:
+        print(f"check-policy: {len(P.lines)} problem(s)")
+        return 1
+    print(f"policy ok: {len(risk['repos']) - ('$comment' in risk['repos'])} repos in risk.yml, "
+          f"{len(auto['repos']) - ('$comment' in auto['repos'])} in autonomy.json, {run} case runs")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

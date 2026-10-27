@@ -1,0 +1,2143 @@
+{
+  "$comment": "Cases every implementation of policy/risk.yml and policy/autonomy.json must pass: bin/check-policy's reference matcher here, and hq#210's gate in sk-ctl, which reads this file from the same agent-plugins commit. Each case runs once per repo in repos (\"*\" means every repo in risk.yml's repos) with author (matched by id) and files (path, status, additions, deletions; optional old_path for a rename's old path, base_mode and head_mode as git modes, and binary for a diff with no patch). want gives the class and flags it must get, and optionally the author's level and the route (\"gate\" when the level lets the gate merge the class, else \"owner\"). The first cases are hq#205's (tools/merge_gate/test_merge_gate.py at hq de93ba3).",
+  "version": 1,
+  "cases": [
+    {
+      "name": "hq#205 always R3: .github/workflows/ci.yml",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": ".github/workflows/ci.yml", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: .github/workflows/deploy.yml",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": ".github/workflows/deploy.yml", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: .env.production",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": ".env.production", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: .dev.vars",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": ".dev.vars", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/secrets.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/secrets.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: .infisical.json",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": ".infisical.json", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/lib/infisical.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/infisical.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: infisical/README.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "infisical/README.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: stacks/edge/rulesets.tf",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "stacks/edge/rulesets.tf", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: infra/main.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "infra/main.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: infra/README.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "infra/README.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: terraform/dns.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "terraform/dns.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/dns.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/dns.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: docs/DNS.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/DNS.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: wrangler.jsonc",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "wrangler.jsonc", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: public/_headers",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/_headers", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: public/_redirects",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/_redirects", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: public/_routes.json",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/_routes.json", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: scripts/deploy.mjs",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "scripts/deploy.mjs", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: docs/DEPLOYMENT.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/DEPLOYMENT.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: scripts/provision.mjs",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "scripts/provision.mjs", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: scripts/smoke.mjs",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "scripts/smoke.mjs", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: test/smoke.test.mjs",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "test/smoke.test.mjs", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: docs/rollback.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/rollback.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/rollback/run.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/rollback/run.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: tests/smoke/health.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "tests/smoke/health.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: scripts/post-rollback/notify.mjs",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "scripts/post-rollback/notify.mjs", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/worker/billing.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/worker/billing.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/billing/plans.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/billing/plans.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/payments/upi.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/payments/upi.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/lib/stripe.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/stripe.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/pages/checkout.astro",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/pages/checkout.astro", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/invoice.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/invoice.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/refunds/index.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/refunds/index.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/subscription.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/subscription.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: src/lib/monetize/sponsor.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/monetize/sponsor.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: packages/core/src/money.ts",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "packages/core/src/money.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: docs/payments.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/payments.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: agents/vm/sk-agent",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "agents/vm/sk-agent", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: agents/vm/README.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "agents/vm/README.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: docs/decisions/0007-anything.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/decisions/0007-anything.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: LICENSE",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "LICENSE", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: packages/core/LICENSE.md",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "packages/core/LICENSE.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: NOTICE",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "NOTICE", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: public/fonts/licenses/OFL.txt",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/fonts/licenses/OFL.txt", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: migrations/0001_initial.sql",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "migrations/0001_initial.sql", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: package.json",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "package.json", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 always R3: pnpm-lock.yaml",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "pnpm-lock.yaml", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq#205 pennypact R3: packages/core/src/split.ts",
+      "repos": ["pennypact"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "packages/core/src/split.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L1", "route": "owner"}
+    },
+    {
+      "name": "hq#205 pennypact R3: apps/api/src/routes/settle.ts",
+      "repos": ["pennypact"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "apps/api/src/routes/settle.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L1", "route": "owner"}
+    },
+    {
+      "name": "hq#205 pennypact R3: docs/DEPLOY.md",
+      "repos": ["pennypact"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/DEPLOY.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L1", "route": "owner"}
+    },
+    {
+      "name": "hq#205 devpause R3: src/worker/LivePresence.ts",
+      "repos": ["devpause"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/worker/LivePresence.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 devpause R3: src/pages/Pass.tsx",
+      "repos": ["devpause"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/pages/Pass.tsx", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 devpause R3: scripts/backup.mjs",
+      "repos": ["devpause"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "scripts/backup.mjs", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 viewsmeet R3: src/server/app.ts",
+      "repos": ["viewsmeet"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/server/app.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 viewsmeet R3: src/identity/alias.ts",
+      "repos": ["viewsmeet"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/identity/alias.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 viewsmeet R3: src/assessments/index.ts",
+      "repos": ["viewsmeet"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/assessments/index.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 viewsmeet R3: public/x-pixel.js",
+      "repos": ["viewsmeet"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/x-pixel.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 viewsmeet R3: public/campaign-attribution.js",
+      "repos": ["viewsmeet"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/campaign-attribution.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 viewsmeet R3: campaigns/story.json",
+      "repos": ["viewsmeet"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "campaigns/story.json", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 viewsmeet R3: public/cognitive-scoring.js",
+      "repos": ["viewsmeet"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/cognitive-scoring.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 setkernel-live R3: src/worker.js",
+      "repos": ["setkernel-live"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/worker.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 setkernel-live R3: src/github.js",
+      "repos": ["setkernel-live"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/github.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 setkernel-live R3: src/logic.js",
+      "repos": ["setkernel-live"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/logic.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 keelpost R3: workers/durableObject/migrations.ts",
+      "repos": ["keelpost"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "workers/durableObject/migrations.ts",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 keelpost R3: workers/app.ts",
+      "repos": ["keelpost"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "workers/app.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 keelpost R3: workers/email-sender.ts",
+      "repos": ["keelpost"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "workers/email-sender.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 keelpost R3: workers/db/schema.ts",
+      "repos": ["keelpost"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "workers/db/schema.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 keelpost R3: workers/mcp/index.ts",
+      "repos": ["keelpost"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "workers/mcp/index.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 keelpost R3: app/entry.server.tsx",
+      "repos": ["keelpost"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "app/entry.server.tsx", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 keelpost R3: app/components/EmailIframe.tsx",
+      "repos": ["keelpost"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "app/components/EmailIframe.tsx", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: src/pages/api/contact.ts",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/pages/api/contact.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: src/pages/admin/index.astro",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/pages/admin/index.astro", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: src/pages/pay/index.astro",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/pages/pay/index.astro", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: src/worker.ts",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/worker.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: src/utils/turnstile.ts",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/utils/turnstile.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: src/utils/form-rate-limit.ts",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/utils/form-rate-limit.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: src/utils/inbound-email-sanitize.ts",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "src/utils/inbound-email-sanitize.ts",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: src/utils/admin-media-operations.ts",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "src/utils/admin-media-operations.ts",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: public/scripts/admin-live.js",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/scripts/admin-live.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca R3: public/scripts/tracking.js",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/scripts/tracking.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 fourseasonsfarm-ca R3: src/pages/api/contact.ts",
+      "repos": ["fourseasonsfarm-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/pages/api/contact.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 fourseasonsfarm-ca R3: src/lib/form/origin.ts",
+      "repos": ["fourseasonsfarm-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/form/origin.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 fourseasonsfarm-ca R3: src/lib/form/sanitize.ts",
+      "repos": ["fourseasonsfarm-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/form/sanitize.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 fourseasonsfarm-ca R3: src/lib/form/rate-limit.ts",
+      "repos": ["fourseasonsfarm-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/form/rate-limit.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 raghavgupta-ca R3: src/pages/api/contact.ts",
+      "repos": ["raghavgupta-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/pages/api/contact.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 raghavgupta-ca R3: src/pages/mcp.ts",
+      "repos": ["raghavgupta-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/pages/mcp.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 raghavgupta-ca R3: public/analytics.js",
+      "repos": ["raghavgupta-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/analytics.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 programmes-net R3: src/routes/api/x/+server.ts",
+      "repos": ["programmes-net"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/routes/api/x/+server.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 programmes-net R3: src/lib/analytics/client.ts",
+      "repos": ["programmes-net"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/analytics/client.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 programmes-net R3: src/lib/api/ratelimit.ts",
+      "repos": ["programmes-net"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/api/ratelimit.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 programmes-net R3: src/lib/api/mcp-http.ts",
+      "repos": ["programmes-net"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/api/mcp-http.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 programmes-net R3: src/lib/server/bindings.ts",
+      "repos": ["programmes-net"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/server/bindings.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 programmes-net R3: src/routes/mcp/+server.ts",
+      "repos": ["programmes-net"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/routes/mcp/+server.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/admin/class-lafka-order-notifications.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/admin/class-lafka-order-notifications.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: assets/js/lafka-order-tracker.min.js",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "assets/js/lafka-order-tracker.min.js",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: woocommerce/myaccount/orders.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "woocommerce/myaccount/orders.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: woocommerce/cart/cart.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "woocommerce/cart/cart.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/cart/fees.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "incl/cart/fees.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/addons/engine/pricing/class-lafka-pricing-resolver.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/addons/engine/pricing/class-lafka-pricing-resolver.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/addons/engine/admin/class-lafka-engine-ajax.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/addons/engine/admin/class-lafka-engine-ajax.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/addons/engine/api/class-lafka-addons-rest-groups-controller.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/addons/engine/api/class-lafka-addons-rest-groups-controller.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/wpml/addons/class-lafka-wcml-product-addons.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/wpml/addons/class-lafka-wcml-product-addons.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/shipping-distance/class-lafka-distance-shipping.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/shipping-distance/class-lafka-distance-shipping.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/woocommerce/lafka-price-presentation.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/woocommerce/lafka-price-presentation.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/woocommerce/lafka-slow-day.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/woocommerce/lafka-slow-day.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/store-api/class-lafka-store-api.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/store-api/class-lafka-store-api.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/promotions/class-lafka-promotions-admin.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/promotions/class-lafka-promotions-admin.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/analytics/lafka-server-events.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/analytics/lafka-server-events.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-plugin R3: incl/admin/lafka-term-form-nonce.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/admin/lafka-term-form-nonce.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-theme R3: woocommerce/myaccount/orders.php",
+      "repos": ["lafka-theme"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "woocommerce/myaccount/orders.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-theme R3: woocommerce/cart/cart.php",
+      "repos": ["lafka-theme"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "woocommerce/cart/cart.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-theme R3: woocommerce/order/order-details.php",
+      "repos": ["lafka-theme"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "woocommerce/order/order-details.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-theme R3: assets/css/border.css",
+      "repos": ["lafka-theme"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "assets/css/border.css", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-theme R3: woocommerce/loop/price.php",
+      "repos": ["lafka-theme"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "woocommerce/loop/price.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-theme R3: incl/woocommerce/lafka-variable-price-from.php",
+      "repos": ["lafka-theme"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "incl/woocommerce/lafka-variable-price-from.php",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-theme R3: js/lafka-price-slider.js",
+      "repos": ["lafka-theme"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "js/lafka-price-slider.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-child R3: woocommerce/myaccount/orders.php",
+      "repos": ["lafka-child"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "woocommerce/myaccount/orders.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-child R3: woocommerce/cart/mini-cart.php",
+      "repos": ["lafka-child"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "woocommerce/cart/mini-cart.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-child R3: woocommerce/order/thankyou.php",
+      "repos": ["lafka-child"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "woocommerce/order/thankyou.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-child R3: inc/tax-display.php",
+      "repos": ["lafka-child"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "inc/tax-display.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 lafka-child R3: inc/coupon-notice.php",
+      "repos": ["lafka-child"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "inc/coupon-notice.php", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 tenant-move R3: tests/fixtures/tenant.json",
+      "repos": ["tenant-move"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "tests/fixtures/tenant.json", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 tenant-move R3: docs/PROGRAMME-STATE.md",
+      "repos": ["tenant-move"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/PROGRAMME-STATE.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq#205 docs and tests are R0",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "README.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "tests/test_a.py", "status": "modified", "additions": 1, "deletions": 0}
+      ],
+      "want": {"class": "R0", "flags": []}
+    },
+    {
+      "name": "hq#205 keelpost small fix is R1: app/routes/inbox.tsx",
+      "repos": ["keelpost"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "app/routes/inbox.tsx", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 devpause small fix is R1: src/copy.ts",
+      "repos": ["devpause"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/copy.ts", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 viewsmeet small fix is R1: src/friendship/deck.ts",
+      "repos": ["viewsmeet"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/friendship/deck.ts", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 setkernel-live small fix is R1: public/app.js",
+      "repos": ["setkernel-live"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/app.js", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 fourseasonsfarm-ca small fix is R1: src/components/Header.astro",
+      "repos": ["fourseasonsfarm-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/components/Header.astro", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 hautedogfinders-ca small fix is R1: src/components/Header.astro",
+      "repos": ["hautedogfinders-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/components/Header.astro", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 programmes-net small fix is R1: src/lib/tools/base64.ts",
+      "repos": ["programmes-net"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/lib/tools/base64.ts", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 raghavgupta-ca small fix is R1: src/components/Header.astro",
+      "repos": ["raghavgupta-ca"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/components/Header.astro", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 lafka-child small fix is R1: inc/template-tags.php",
+      "repos": ["lafka-child"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "inc/template-tags.php", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 lafka-plugin small fix is R1: incl/shortcodes/menu.php",
+      "repos": ["lafka-plugin"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "incl/shortcodes/menu.php", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 lafka-theme small fix is R1: incl/template-functions.php",
+      "repos": ["lafka-theme"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "incl/template-functions.php", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 cf-mcp-template small fix is R1: src/index.ts",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/index.ts", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 cf-rag-template small fix is R1: src/index.ts",
+      "repos": ["cf-rag-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/index.ts", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 tenant-move small fix is R1: src/tenantmove/catalogue.py",
+      "repos": ["tenant-move"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/tenantmove/catalogue.py", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "hq#205 pennypact code is R3: apps/web/src/a.ts",
+      "repos": ["pennypact"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "apps/web/src/a.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L1", "route": "owner"}
+    },
+    {
+      "name": "pennypact a test under apps/*/src is R3",
+      "repos": ["pennypact"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "apps/web/src/split.test.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L1", "route": "owner"}
+    },
+    {
+      "name": "pennypact docs merge at L1",
+      "repos": ["pennypact"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/guide.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L1", "route": "gate"}
+    },
+    {
+      "name": "the old path of a rename counts",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "src/a.ts",
+          "status": "renamed",
+          "additions": 0,
+          "deletions": 0,
+          "old_path": "src/auth/a.ts"
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a control character in a path",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a\u0007b.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a newline in a path",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a\nb.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a symlink at head",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "docs/link.md",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0,
+          "base_mode": "100644",
+          "head_mode": "120000"
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a submodule at base",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "vendor/lib", "status": "removed", "additions": 0, "deletions": 1, "base_mode": "160000"}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "an executable-bit change",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "tests/test-run.sh",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0,
+          "base_mode": "100644",
+          "head_mode": "100755"
+        }
+      ],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "an unchanged mode is fine",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "tests/test-run.sh",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0,
+          "base_mode": "100755",
+          "head_mode": "100755"
+        }
+      ],
+      "want": {"class": "R0", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "R3 patterns ignore case",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "SCRIPTS/Deploy.MJS", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "decisions in any case",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "Docs/Decisions/0009-x.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "an auth word inside a segment (author.ts, accepted)",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/author.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "an auth word in a directory",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/Security/notes.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a dependency patch",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "package.json", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "package-lock.json", "status": "modified", "additions": 20, "deletions": 20}
+      ],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a migration stays R3",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "migrations/0002_add_column.sql", "status": "added", "additions": 3, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a policy file in any repo",
+      "repos": "*",
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "policy/autonomy.json", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a policy file in an unlisted repo",
+      "repos": ["some-new-repo"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "policy/risk.yml", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "no changed files",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "300 files: the compare API may have cut the list",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "docs/p0.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p1.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p2.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p3.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p4.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p5.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p6.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p7.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p8.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p9.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p10.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p11.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p12.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p13.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p14.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p15.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p16.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p17.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p18.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p19.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p20.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p21.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p22.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p23.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p24.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p25.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p26.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p27.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p28.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p29.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p30.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p31.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p32.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p33.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p34.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p35.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p36.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p37.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p38.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p39.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p40.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p41.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p42.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p43.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p44.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p45.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p46.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p47.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p48.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p49.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p50.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p51.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p52.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p53.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p54.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p55.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p56.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p57.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p58.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p59.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p60.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p61.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p62.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p63.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p64.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p65.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p66.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p67.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p68.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p69.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p70.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p71.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p72.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p73.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p74.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p75.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p76.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p77.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p78.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p79.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p80.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p81.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p82.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p83.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p84.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p85.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p86.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p87.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p88.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p89.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p90.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p91.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p92.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p93.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p94.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p95.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p96.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p97.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p98.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p99.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p100.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p101.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p102.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p103.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p104.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p105.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p106.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p107.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p108.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p109.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p110.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p111.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p112.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p113.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p114.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p115.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p116.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p117.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p118.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p119.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p120.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p121.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p122.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p123.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p124.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p125.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p126.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p127.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p128.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p129.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p130.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p131.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p132.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p133.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p134.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p135.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p136.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p137.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p138.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p139.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p140.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p141.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p142.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p143.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p144.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p145.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p146.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p147.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p148.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p149.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p150.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p151.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p152.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p153.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p154.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p155.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p156.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p157.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p158.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p159.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p160.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p161.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p162.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p163.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p164.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p165.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p166.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p167.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p168.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p169.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p170.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p171.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p172.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p173.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p174.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p175.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p176.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p177.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p178.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p179.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p180.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p181.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p182.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p183.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p184.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p185.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p186.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p187.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p188.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p189.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p190.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p191.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p192.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p193.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p194.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p195.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p196.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p197.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p198.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p199.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p200.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p201.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p202.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p203.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p204.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p205.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p206.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p207.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p208.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p209.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p210.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p211.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p212.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p213.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p214.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p215.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p216.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p217.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p218.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p219.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p220.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p221.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p222.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p223.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p224.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p225.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p226.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p227.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p228.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p229.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p230.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p231.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p232.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p233.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p234.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p235.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p236.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p237.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p238.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p239.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p240.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p241.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p242.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p243.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p244.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p245.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p246.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p247.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p248.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p249.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p250.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p251.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p252.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p253.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p254.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p255.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p256.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p257.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p258.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p259.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p260.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p261.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p262.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p263.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p264.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p265.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p266.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p267.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p268.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p269.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p270.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p271.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p272.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p273.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p274.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p275.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p276.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p277.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p278.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p279.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p280.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p281.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p282.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p283.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p284.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p285.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p286.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p287.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p288.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p289.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p290.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p291.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p292.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p293.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p294.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p295.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p296.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p297.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p298.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p299.md", "status": "modified", "additions": 1, "deletions": 0}
+      ],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a workflow",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": ".github/workflows/ci.yml", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "agent instructions",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "AGENTS.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "agent-plugins: every path is R3",
+      "repos": ["agent-plugins"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "README.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "sk-ctl: every path is R3",
+      "repos": ["sk-ctl"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "evidence: every path is R3",
+      "repos": ["evidence"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "tests/a.test.ts", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "merge-gate: every path is R3",
+      "repos": ["merge-gate"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "README.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "setkernel-cloudflare: every path is R3",
+      "repos": ["setkernel-cloudflare"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "21 files",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "docs/p0.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p1.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p2.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p3.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p4.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p5.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p6.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p7.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p8.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p9.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p10.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p11.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p12.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p13.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p14.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p15.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p16.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p17.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p18.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p19.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p20.md", "status": "modified", "additions": 1, "deletions": 0}
+      ],
+      "want": {"class": "R2", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "20 files",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "docs/p0.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p1.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p2.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p3.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p4.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p5.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p6.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p7.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p8.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p9.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p10.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p11.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p12.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p13.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p14.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p15.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p16.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p17.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p18.md", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "docs/p19.md", "status": "modified", "additions": 1, "deletions": 0}
+      ],
+      "want": {"class": "R0", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "1001 lines",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1001, "deletions": 0}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "1000 lines",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 600, "deletions": 400}],
+      "want": {"class": "R0", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "a test deleted",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "tests/a.test.ts", "status": "removed", "additions": 0, "deletions": 10}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a test renamed",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "tests/b.test.ts",
+          "status": "renamed",
+          "additions": 0,
+          "deletions": 0,
+          "old_path": "tests/a.test.ts"
+        }
+      ],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a test deleted with a code fix",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "src/index.ts", "status": "modified", "additions": 2, "deletions": 0},
+        {"path": "tests/a.test.ts", "status": "removed", "additions": 0, "deletions": 10}
+      ],
+      "want": {"class": "R2", "flags": ["tests_and_code"], "route": "owner"}
+    },
+    {
+      "name": "a removed doc is fine",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/old.md", "status": "removed", "additions": 0, "deletions": 30}],
+      "want": {"class": "R0", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "4 code files",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "src/m0.ts", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "src/m1.ts", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "src/m2.ts", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "src/m3.ts", "status": "modified", "additions": 1, "deletions": 0}
+      ],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "3 code files",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "src/m0.ts", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "src/m1.ts", "status": "modified", "additions": 1, "deletions": 0},
+        {"path": "src/m2.ts", "status": "modified", "additions": 1, "deletions": 0}
+      ],
+      "want": {"class": "R1", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "41 code lines",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/a.ts", "status": "modified", "additions": 21, "deletions": 20}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "40 code lines",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/a.ts", "status": "modified", "additions": 20, "deletions": 20}],
+      "want": {"class": "R1", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "an added code file",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/new.ts", "status": "added", "additions": 5, "deletions": 0}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a removed code file",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/old.ts", "status": "removed", "additions": 0, "deletions": 5}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a renamed code file",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/b.ts", "status": "renamed", "additions": 0, "deletions": 0, "old_path": "src/a.ts"}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a doc renamed from code",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a.md", "status": "renamed", "additions": 0, "deletions": 0, "old_path": "src/a.ts"}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a binary code file",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/a.ts", "status": "modified", "additions": 3, "deletions": 0, "binary": true}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a code file with no lines",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/a.ts", "status": "modified", "additions": 0, "deletions": 0}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a Makefile is no doc, test or code",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "Makefile", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "an svg is no doc",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/logo.svg", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "mdx is no doc",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/page.mdx", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "an image under docs is a doc",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/img/shot.png", "status": "added", "additions": 0, "deletions": 0, "binary": true}],
+      "want": {"class": "R0", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "a shell script is no code file",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "scripts/run.sh", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R2", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "a test and a code file",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "src/index.ts", "status": "modified", "additions": 5, "deletions": 0},
+        {"path": "tests/index.test.ts", "status": "modified", "additions": 5, "deletions": 0}
+      ],
+      "want": {"class": "R1", "flags": ["tests_and_code"], "route": "gate"}
+    },
+    {
+      "name": "tests only: no flag",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "tests/index.test.ts", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "code only: no flag",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/index.ts", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "an R3 PR still gets the flag",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "src/auth.ts", "status": "modified", "additions": 5, "deletions": 0},
+        {"path": "tests/auth.test.ts", "status": "modified", "additions": 5, "deletions": 0}
+      ],
+      "want": {"class": "R3", "flags": ["tests_and_code"], "route": "owner"}
+    },
+    {
+      "name": "a test moved into code counts both ways",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "src/a.ts",
+          "status": "renamed",
+          "additions": 0,
+          "deletions": 0,
+          "old_path": "tests/a.test.ts"
+        }
+      ],
+      "want": {"class": "R2", "flags": ["tests_and_code"], "route": "owner"}
+    },
+    {
+      "name": "vega-setkernel is L2 in cf-mcp-template",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "vega-setkernel", "id": 341046173},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "rigel-setkernel is L2 in cf-mcp-template",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "rigel-setkernel", "id": 341046596},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "lyra-setkernel is L2 in cf-mcp-template",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "orion-setkernel is L2 in cf-mcp-template",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "orion-setkernel", "id": 341049454},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "the owner is L0 as an author",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "realRaghavGupta", "id": 20342174},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "a bot is L0",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "dependabot[bot]", "id": 49699333},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "an unknown id is L0",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "someone-else", "id": 1},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "a login with the wrong id is L0",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 999},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "an unlisted repo is L0",
+      "repos": ["some-new-repo"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "a never repo is L0",
+      "repos": ["healthos"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/a.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L0", "route": "owner"}
+    },
+    {
+      "name": "R2 goes to the owner at L2",
+      "repos": ["devpause"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/new.ts", "status": "added", "additions": 5, "deletions": 0}],
+      "want": {"class": "R2", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "R1 merges at L2 on setkernel-live",
+      "repos": ["setkernel-live"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "public/app.js", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L2", "route": "gate"}
+    },
+    {
+      "name": "setkernel-live src is R3",
+      "repos": ["setkernel-live"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "src/worker.js", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "level": "L2", "route": "owner"}
+    },
+    {
+      "name": "hq docs are R0 at L1",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/research/x.md", "status": "added", "additions": 40, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L1", "route": "gate"}
+    },
+    {
+      "name": "hq README is R0",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "README.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "level": "L1", "route": "gate"}
+    },
+    {
+      "name": "hq test-*.py is a test there",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "tools/test-check-docs.py", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "test-*.py is code elsewhere",
+      "repos": ["cf-mcp-template"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "tools/test-check-docs.py", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "hq test_*.sh is a test there",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "backups/test_restore.sh", "status": "modified", "additions": 5, "deletions": 0}],
+      "want": {"class": "R0", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "hq test_*.py",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {
+          "path": "tools/merge_gate/test_merge_gate.py",
+          "status": "modified",
+          "additions": 5,
+          "deletions": 0
+        }
+      ],
+      "want": {"class": "R0", "flags": [], "route": "gate"}
+    },
+    {
+      "name": "hq tools are outside only",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "tools/check-docs.py", "status": "modified", "additions": 2, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq a new check needs its mk file",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [
+        {"path": "tools/test-new.py", "status": "added", "additions": 30, "deletions": 0},
+        {"path": "mk/600-test-new.mk", "status": "added", "additions": 3, "deletions": 0}
+      ],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq agents",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "agents/personas/README.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq agents/vm",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "agents/vm/test-sk-agent-claim.sh", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq decisions",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/decisions/0009-x.md", "status": "added", "additions": 50, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq repo-standard (sk-agent reads it)",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/repo-standard.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq agentic",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/agentic.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq tracking",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/tracking.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq discussions",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/discussions.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq runbooks",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/runbooks/break-glass.md", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq observability tests deploy to sk-obs01",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "observability/wall/test_server.py", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    },
+    {
+      "name": "hq html under docs is code",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "docs/design/page.html", "status": "modified", "additions": 3, "deletions": 0}],
+      "want": {"class": "R1", "flags": [], "level": "L1", "route": "owner"}
+    },
+    {
+      "name": "hq registry is outside only",
+      "repos": ["hq"],
+      "author": {"login": "lyra-setkernel", "id": 341047397},
+      "files": [{"path": "registry/hosts.csv", "status": "modified", "additions": 1, "deletions": 0}],
+      "want": {"class": "R3", "flags": [], "route": "owner"}
+    }
+  ]
+}

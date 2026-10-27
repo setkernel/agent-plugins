@@ -1,0 +1,166 @@
+{
+  "$comment": "setkernel's merge risk classes (hq#210): which class, R0 to R3, a PR is. The class is the highest any rule gives; every changed path counts, and so does a rename's old path. R3: a path matching r3.floor (decision 0006's floor), r3.global (hq#205), r3.policy or the repo's deny, case-insensitively; an r3.auth_words word inside any path segment; a path outside the repo's only; every path in an r3.repos repo; a symlink, a submodule or a mode change at base or head; a control character in a path; no changed files, or 300 or more (the compare API's cut-off). R2: what no R3 rule takes and R0 and R1 don't cover: more than limits.files files or limits.lines lines, a file that is no doc, test or code file, a test deleted or renamed away, or code past R1. R1: R0 plus at most limits.code_files code files, each modified with a line diff, at most limits.code_lines lines together. R0: docs and tests only. Patterns are tiered_merge.py's globs. Written as JSON so jq, Python and the sk-ctl Worker read it with no YAML parser; YAML 1.2 reads it too. bin/check-policy validates it, keeps 0006's and hq#205's patterns in R3, and runs policy/risk-cases.json. A change to this file is R3.",
+  "version": 1,
+  "limits": {"files": 20, "lines": 1000, "code_files": 3, "code_lines": 40},
+  "categories": {
+    "$comment": "Decision 0006's doc, test and code files (tiered_merge.py:59-63). Tests are checked first, then docs; a file with a code extension is never a doc. A repo's docs, tests and code extras add to these and still lose to every R3 rule.",
+    "docs": [
+      "**/*.md", "LICENSE*", "NOTICE*", "**/docs/**/*.txt", "**/docs/**/*.png", "**/docs/**/*.jpg",
+      "**/docs/**/*.jpeg", "**/docs/**/*.gif", "**/docs/**/*.webp"
+    ],
+    "tests": [
+      "**/test/**", "**/tests/**", "**/__tests__/**", "**/e2e/**", "**/*.test.*", "**/*.spec.*",
+      "**/test_*.py", "**/*_test.py", "**/*_test.go", "**/test-*.sh"
+    ],
+    "code_extensions": [
+      ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".go", ".rs", ".php", ".rb", ".java", ".kt",
+      ".swift", ".c", ".h", ".cpp", ".cs", ".css", ".scss", ".html", ".svelte", ".vue", ".astro"
+    ]
+  },
+  "r3": {
+    "$comment": "repos: every path in these repos is R3. floor: decision 0006's global deny (tiered_merge.py:39-52). auth_words: matched as a substring of any path segment (tiered_merge.py:53). global: hq#205's global deny (proposed-policy.json:12-56), each word as a file and as a directory. policy: policy files in any repo (hq#210).",
+    "repos": [
+      "setkernel-cloudflare", "tesolutions-cloudflare", "wesi-cloudflare", "cloudflare-estate",
+      "microsoft-estate", "tesolutions-microsoft", "wesi-microsoft", "agent-plugins", "agent-kit",
+      "runner-image", ".github", ".github-private", "merge-gate", "sk-ctl", "evidence"
+    ],
+    "floor": [
+      ".github/**", "**/CODEOWNERS", ".gitattributes", ".gitmodules", ".husky/**",
+      "**/.pre-commit-config.yaml", "**/AGENTS.md", "**/CLAUDE.md", "**/GEMINI.md", "**/.claude/**",
+      "**/.agents/**", "**/.cursor/**", "**/SKILL.md", "**/package.json", "**/*.lock", "**/*.lockb",
+      "**/package-lock.json", "**/pnpm-lock.yaml", "**/pnpm-workspace.yaml", "**/.npmrc", "**/.yarnrc*",
+      "**/.pnpmfile.*", "**/.nvmrc", "**/.node-version", "**/.tool-versions", "**/composer.json",
+      "**/requirements*", "**/constraints*", "**/pyproject.toml", "**/setup.py", "**/go.mod", "**/go.sum",
+      "**/Cargo.toml", "**/Gemfile*", "**/tsconfig*.json", "**/*.config.*", "**/wrangler.*", "**/Dockerfile*",
+      "**/*compose*.y*ml", "**/*.tf", "**/*.tfvars", "**/*.tofu", "**/*.hcl", "**/migrations/**", "**/*.sql",
+      "**/functions/**", "**/_worker.*", "**/.env*", "**/.dev.vars*", "**/*.pem", "**/*.key", "**/*.p12",
+      "**/*.crt", "**/hooks.*", "**/middleware.*", "**/_middleware.*"
+    ],
+    "auth_words": [
+      "auth", "login", "session", "passw", "secret", "token", "crypt", "permission", "acl", "rbac", "csp",
+      "cors", "security"
+    ],
+    "global": [
+      "LICENSE*", "NOTICE*", "**/LICENSE*", "**/NOTICE*", "**/licenses/**", "docs/decisions/**",
+      "agents/vm/**", "**/*infisical*", "**/*infisical*/**", "**/stacks/**", "**/infra/**", "**/terraform/**",
+      "**/*dns*", "**/*dns*/**", "**/_headers", "**/_redirects", "**/_routes.json", "**/*deploy*",
+      "**/*deploy*/**", "**/*provision*", "**/*provision*/**", "**/*smoke*", "**/*smoke*/**", "**/*rollback*",
+      "**/*rollback*/**", "**/*billing*", "**/*billing*/**", "**/*payment*", "**/*payment*/**", "**/*stripe*",
+      "**/*stripe*/**", "**/*checkout*", "**/*checkout*/**", "**/*invoice*", "**/*invoice*/**", "**/*refund*",
+      "**/*refund*/**", "**/*subscription*", "**/*subscription*/**", "**/*monet*", "**/*monet*/**",
+      "**/*money*", "**/*money*/**"
+    ],
+    "policy": ["policy/**"]
+  },
+  "flags": {
+    "tests_and_code": "The diff changes a test file (a rename's old path counts) and a code file. Not a class: hq#210 asks for an extra critic pass on these at R1 and above, and sk-ctl's gate computes the same flag."
+  },
+  "quorum": {
+    "$comment": "What each class needs before the gate merges it, all on the same head commit with the branch up to date (0007 §2). Approvals count only from autonomy.json's people, and never from the author, anyone who wrote, committed or pushed a commit in the PR, the owner's seat, or a bot. No class requires a Codex review (0007 md:401-402). R1's two approvals are the interim quorum (hq#210 decision 3). owner-r3-approval is Raghav's R3 approval under hq#210's trust rule (his user id) until hq#212's confirmation replaces it (hq#209 decision 15).",
+    "approvers": {"from": "people", "never": ["author", "committer", "pusher", "owner", "bot"]},
+    "classes": {
+      "R0": {"evidence": "green", "approvals": 1, "extra": []},
+      "R1": {"evidence": "green-on-merge-candidate", "approvals": 2, "extra": []},
+      "R2": {"evidence": "green", "approvals": 2, "extra": ["visual-diff", "rollback-note", "canary"]},
+      "R3": {"evidence": "green", "approvals": 2, "extra": ["owner-r3-approval"]}
+    }
+  },
+  "repos": {
+    "$comment": "Per-repo rules. The hq#205 entries keep proposed-policy.json:89-203's required_checks, only and deny unchanged; its allow_workflows and allow_apps (0006's E4 and E5) are left out, as hq#209 decision 6 decided. required_checks maps each check the gate waits for to the workflow that runs it. deny adds R3 patterns; only makes every other path R3; docs, tests and code add to the categories. hq's entry is new (hq#210 decision 4): only takes docs and the tests its test-diff guard protects (.github/test-diff-globs), and deny keeps what agents and hosts read from hq main in R3.",
+    "cf-mcp-template": {"required_checks": {"Typecheck": ".github/workflows/ci.yml"}, "deny": ["LICENSE*", "NOTICE*"]},
+    "cf-rag-template": {"required_checks": {"Typecheck": ".github/workflows/ci.yml"}, "deny": ["LICENSE*", "NOTICE*"]},
+    "pennypact": {
+      "required_checks": {"Build, typecheck, test": ".github/workflows/ci.yml"},
+      "only": ["**/*.md", "docs/**", "**/tests/**", "**/*.test.*", "**/*.spec.*"],
+      "deny": [
+        "LICENSE*", "NOTICE*", "**/licenses/**", "docs/DEPLOY.md", "apps/*/src/**", "apps/*/app/**",
+        "apps/*/public/**"
+      ]
+    },
+    "tenant-move": {
+      "required_checks": {
+        "Offline checks (3.9)": ".github/workflows/ci.yml",
+        "Offline checks (3.13)": ".github/workflows/ci.yml"
+      },
+      "deny": ["LICENSE*", "NOTICE*", "docs/PROGRAMME-STATE.md", "tests/fixtures/**"]
+    },
+    "keelpost": {
+      "required_checks": {"verify": ".github/workflows/ci.yml"},
+      "deny": ["workers/**", "app/entry.server.tsx", "app/components/EmailIframe.tsx"]
+    },
+    "devpause": {
+      "required_checks": {"check": ".github/workflows/check.yml"},
+      "deny": ["src/worker/**", "src/pages/Pass*", "scripts/**"]
+    },
+    "viewsmeet": {
+      "required_checks": {"check": ".github/workflows/check.yml"},
+      "deny": [
+        "src/server/**", "src/identity/**", "src/http/**", "src/assessments/**", "campaigns/**", "scripts/**",
+        "**/*pixel*", "**/*attribution*", "**/*conversion*", "**/*canary*", "**/*scoring*", "**/*passkey*"
+      ]
+    },
+    "setkernel-live": {"required_checks": {"validate": ".github/workflows/ci.yml"}, "deny": ["src/**", "scripts/**"]},
+    "fourseasonsfarm-ca": {
+      "required_checks": {"ci": ".github/workflows/ci.yml"},
+      "deny": ["src/pages/api/**", "src/lib/form/**", "scripts/**"]
+    },
+    "hautedogfinders-ca": {
+      "required_checks": {"ci": ".github/workflows/ci.yml"},
+      "deny": [
+        "src/pages/api/**", "src/pages/admin/**", "src/pages/pay/**", "src/worker.*", "src/utils/**",
+        "scripts/**", "**/*admin*", "**/*tracking*", "**/*analytics*"
+      ]
+    },
+    "programmes-net": {
+      "required_checks": {"ci": ".github/workflows/ci.yml", "e2e": ".github/workflows/ci.yml"},
+      "deny": [
+        "src/routes/api/**", "src/lib/api/**", "src/lib/server/**", "**/+server.ts", "src/lib/analytics/**",
+        "scripts/**"
+      ]
+    },
+    "raghavgupta-ca": {
+      "required_checks": {"ci": ".github/workflows/ci.yml"},
+      "deny": ["src/pages/api/**", "src/pages/mcp.ts", "**/*analytics*", "scripts/**"]
+    },
+    "lafka-child": {
+      "required_checks": {"CI passed": ".github/workflows/ci.yml"},
+      "deny": [
+        "**/*.min.js", "**/*.min.css", "**/*order*", "**/*order*/**", "**/*cart*", "**/*cart*/**", "**/*pric*",
+        "**/*pric*/**", "**/*shipping*", "**/*shipping*/**", "**/*tax*", "**/*tax*/**", "**/*fee*",
+        "**/*fee*/**", "**/*coupon*", "**/*coupon*/**", "**/*discount*", "**/*discount*/**", "**/*deal*",
+        "**/*deal*/**", "**/*delivery*", "**/*delivery*/**", "**/*promo*", "**/*promo*/**"
+      ]
+    },
+    "lafka-plugin": {
+      "required_checks": {"CI passed": ".github/workflows/ci.yml", "Plugin Check": ".github/workflows/plugin-check.yml"},
+      "deny": [
+        "**/addons/**", "incl/store-api/**", "incl/woocommerce/**", "incl/analytics/**", "**/*nonce*",
+        "**/*.min.js", "**/*.min.css", "**/*order*", "**/*order*/**", "**/*cart*", "**/*cart*/**", "**/*pric*",
+        "**/*pric*/**", "**/*shipping*", "**/*shipping*/**", "**/*tax*", "**/*tax*/**", "**/*fee*",
+        "**/*fee*/**", "**/*coupon*", "**/*coupon*/**", "**/*discount*", "**/*discount*/**", "**/*deal*",
+        "**/*deal*/**", "**/*delivery*", "**/*delivery*/**", "**/*promo*", "**/*promo*/**"
+      ]
+    },
+    "lafka-theme": {
+      "required_checks": {"CI passed": ".github/workflows/ci.yml"},
+      "deny": [
+        "**/*.min.js", "**/*.min.css", "**/*order*", "**/*order*/**", "**/*cart*", "**/*cart*/**", "**/*pric*",
+        "**/*pric*/**", "**/*shipping*", "**/*shipping*/**", "**/*tax*", "**/*tax*/**", "**/*fee*",
+        "**/*fee*/**", "**/*coupon*", "**/*coupon*/**", "**/*discount*", "**/*discount*/**", "**/*deal*",
+        "**/*deal*/**", "**/*delivery*", "**/*delivery*/**", "**/*promo*", "**/*promo*/**"
+      ]
+    },
+    "hq": {
+      "required_checks": {"check": ".github/workflows/check.yml"},
+      "only": [
+        "docs/**", "README.md", "test/**", "tests/**", "**/*.test.*", "**/test-*.sh", "**/test-*.py",
+        "**/test_*.py", "**/test_*.sh"
+      ],
+      "tests": ["**/test-*.py", "**/test_*.sh"],
+      "deny": [
+        "agents/**", "docs/decisions/**", "docs/agentic.md", "docs/tracking.md", "docs/discussions.md",
+        "docs/repo-standard.md", "docs/runbooks/**", "observability/**"
+      ]
+    }
+  }
+}

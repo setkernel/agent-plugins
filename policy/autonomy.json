@@ -1,0 +1,96 @@
+{
+  "$comment": "setkernel's merge autonomy (hq#210): which classes the gate may merge, per person per repo. A PR's level is its author's level in that repo, never above the repo's max; people maps each login to its GitHub user id, and the gate matches the author by id, not login. Any person, bot or repo not listed is L0, and so is the owner as an author, everywhere: Claude Lead and raghav-dev sessions act on his login. A class above the level is decision 0007's veto, and the PR goes to Raghav. levels gives the highest class each level lets the gate merge; L4 merges R3 only with R3's approval step. No level is above L2 until R2 merges are allowed (P4, 0007 md:283), and never lists the repos that stay at L0; bin/check-policy enforces both. An entry above L0 installs nothing: setkernel-merge's install list is Raghav's step (hq#209). A change to this file is R3.",
+  "version": 1,
+  "levels": {"L0": null, "L1": "R0", "L2": "R1", "L3": "R2", "L4": "R3"},
+  "default": "L0",
+  "owner": {"login": "realRaghavGupta", "id": 20342174},
+  "people": {
+    "vega-setkernel": 341046173,
+    "rigel-setkernel": 341046596,
+    "lyra-setkernel": 341047397,
+    "orion-setkernel": 341049454
+  },
+  "never": {
+    "$comment": "0006: tiered_merge.py:55-58. hq205: proposed-policy.json:57-87. merge: setkernel-merge's never-on list (hq#209, issuecomment-6315300661). A * matches any characters; names match case-insensitively.",
+    "0006": [
+      "setkernel-cloudflare", "tesolutions-cloudflare", "wesi-cloudflare", "cloudflare-estate",
+      "microsoft-estate", "tesolutions-microsoft", "wesi-microsoft", "agent-plugins", "agent-kit",
+      "runner-image", "merge-gate", ".github", ".github-private", "mezbano", "zz-infisical-pilot",
+      "setkernel.github.io"
+    ],
+    "hq205": [
+      "autopilot", "unifi-ddns", "unifi-ddns-setkernel", "healthos", "setkernel-com", "dotted-map-next",
+      "WAssure", "WAssureAPI", "WAssureMobile", "WAssureNext", "WAssureNextAPI", "WAssureNextMobile",
+      "WAssureNextUI", "wassurenext-web", "wassurenextweb", "wassurenextweb-base", "wesi-cloudflare",
+      "wesi-microsoft", "tesolutions", "tesolutions-ca", "tesolutions-cloudflare", "tesolutions-microsoft",
+      "soulvriti", "rea", "clef-wordpress", "bipoc", "nayya", "size-finder-extension", "recplay"
+    ],
+    "merge": ["sk-ctl", "evidence", "inbox", "WAssure*", "bipoc", "nayya", "recplay", "size-finder-extension"]
+  },
+  "repos": {
+    "cf-mcp-template": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "cf-rag-template": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "pennypact": {
+      "max": "L1",
+      "people": {"vega-setkernel": "L1", "rigel-setkernel": "L1", "lyra-setkernel": "L1", "orion-setkernel": "L1"}
+    },
+    "tenant-move": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "keelpost": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "devpause": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "viewsmeet": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "setkernel-live": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "fourseasonsfarm-ca": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "hautedogfinders-ca": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "programmes-net": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "raghavgupta-ca": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "lafka-child": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "lafka-plugin": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "lafka-theme": {
+      "max": "L2",
+      "people": {"vega-setkernel": "L2", "rigel-setkernel": "L2", "lyra-setkernel": "L2", "orion-setkernel": "L2"}
+    },
+    "hq": {
+      "max": "L1",
+      "people": {"vega-setkernel": "L1", "rigel-setkernel": "L1", "lyra-setkernel": "L1", "orion-setkernel": "L1"}
+    }
+  }
+}

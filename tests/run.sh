@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests for bin/generate, the session hook, the verify gate, the D1 guard, the persona hook and bin/dependabot-policy. POSIX sh; needs jq for the generator tests.
+# Tests for bin/generate, the session hook, the verify gate, the D1 guard, the persona hook, bin/dependabot-policy and bin/check-policy. POSIX sh; needs jq for the generator tests.
 # Usage: tests/run.sh            (set SHELL_UNDER_TEST=dash or "busybox sh" to try other shells)
 set -eu
 
@@ -986,6 +986,94 @@ expect 0 "typescript-6.0" "TypeScript 7 crosses its hold" -- dp crosses npm type
 expect 1 "" "TypeScript 6.0.3 does not cross" -- dp crosses npm typescript 6.0.3
 expect 0 "node-24" "@types/node 26 crosses" -- dp crosses npm @types/node 26.6.4
 expect 1 "" "a hold only applies to its ecosystem" -- dp crosses github-actions typescript 7.0.0
+
+# bin/check-policy (#47): the merge gate's policy/risk.yml, policy/autonomy.json and policy/risk-cases.json.
+# The committed files pass; each rule has a fixture that fails for its own reason.
+cpol() { python3 "$root/bin/check-policy" "$@"; }
+# pol <name> <file> <jq-filter>: a copy of policy/ with one file rewritten by jq; prints the copy's path.
+pol() {
+  d=$tmp/pol-$1
+  rm -rf "$d"
+  cp -R "$root/policy" "$d"
+  jq "$3" "$root/policy/$2" >"$d/$2"
+  echo "$d"
+}
+expect 0 "policy ok: 16 repos in risk.yml, 16 in autonomy.json" "the committed policy files pass" -- cpol
+expect 2 "usage:" "an unknown argument is a usage error" -- cpol --nope
+d=$(pol yaml risk.yml .)
+printf 'version: 1\nrepos: {}\n' >"$d/risk.yml"
+expect 1 "risk.yml: not JSON" "block YAML in risk.yml is refused" -- cpol --dir "$d"
+d=$(pol comment autonomy.json 'del(.["$comment"])')
+expect 1 "autonomy.json: must be an object whose first key is" "a file without its leading \$comment is refused" -- cpol --dir "$d"
+d=$(pol dupe autonomy.json .)
+sed 's/"version": 1,/"version": 1, "version": 2,/' "$root/policy/autonomy.json" >"$d/autonomy.json"
+expect 1 "autonomy.json: key 'version' appears twice" "a key given twice is refused (parsers keep only the last)" -- cpol --dir "$d"
+d=$(pol key risk.yml '.extra = 1')
+expect 1 "risk.yml: unknown key 'extra'" "an unknown key is refused" -- cpol --dir "$d"
+d=$(pol class risk-cases.json '.cases[0].want.class = "R4"')
+expect 1 "unknown class 'R4'" "an unknown class is refused" -- cpol --dir "$d"
+d=$(pol level autonomy.json '.repos.keelpost.max = "L9"')
+expect 1 "repos.keelpost.max: unknown level 'L9'" "an unknown level is refused" -- cpol --dir "$d"
+d=$(pol levels autonomy.json '.levels.L1 = "R1"')
+expect 1 "autonomy.json levels: must be" "the level table can't widen a level" -- cpol --dir "$d"
+d=$(pol max autonomy.json '.repos.pennypact.people["lyra-setkernel"] = "L2"')
+expect 1 "people.lyra-setkernel: L2 is above the repo's max L1" "a person above the repo's max is refused" -- cpol --dir "$d"
+d=$(pol l3 autonomy.json '.repos.keelpost.max = "L3" | .repos.keelpost.people["lyra-setkernel"] = "L3"')
+expect 1 "L3 is above L2: R2 merges wait for P4" "no level above L2 (R2 merges wait for P4)" -- cpol --dir "$d"
+d=$(pol never autonomy.json '.repos.healthos = .repos.keelpost')
+expect 1 "repos.healthos: is on the never side" "a never-list repo above L0 is refused" -- cpol --dir "$d"
+d=$(pol wassure autonomy.json '.repos.WAssureWeb = .repos.keelpost')
+expect 1 "repos.WAssureWeb: is on the never side" "a WAssure* repo above L0 is refused" -- cpol --dir "$d"
+d=$(pol skctl autonomy.json '.repos["sk-ctl"] = .repos.keelpost')
+expect 1 "repos.sk-ctl: is on the never side" "sk-ctl above L0 is refused" -- cpol --dir "$d"
+d=$(pol neverdrop autonomy.json '.never.merge -= ["inbox"]')
+expect 1 "never.merge: drops 'inbox'" "the never list can't drop a repo" -- cpol --dir "$d"
+d=$(pol owner autonomy.json '.people.realRaghavGupta = 20342174')
+expect 1 "people.realRaghavGupta: the owner is L0" "the owner can't be a person" -- cpol --dir "$d"
+d=$(pol ownerrepo autonomy.json '.repos.keelpost.people.realRaghavGupta = "L1"')
+expect 1 "people.realRaghavGupta: the owner is L0 as an author everywhere" "the owner can't have a level" -- cpol --dir "$d"
+d=$(pol bot autonomy.json '.people["dependabot[bot]"] = 49699333')
+expect 1 "people.dependabot\[bot\]: a bot is never a person" "a [bot] login is refused" -- cpol --dir "$d"
+d=$(pol sameid autonomy.json '.people["orion-setkernel"] = 341047397')
+expect 1 "has the same id as" "two people with one id are refused" -- cpol --dir "$d"
+d=$(pol floor risk.yml '.r3.floor -= ["**/*.sql"]')
+expect 1 "r3.floor: drops '\*\*/\*.sql' (0006's floor" "dropping a 0006 floor pattern is refused" -- cpol --dir "$d"
+d=$(pol policy risk.yml '.r3.policy = []')
+expect 1 "policy/README.md in cf-mcp-template is R0, not R3" "policy/** below R3 is refused" -- cpol --dir "$d"
+d=$(pol r3repo risk.yml '.r3.repos -= ["sk-ctl"]')
+expect 1 "README.md in sk-ctl is R0, not R3" "a path in an R3 repo below R3 is refused" -- cpol --dir "$d"
+d=$(pol checks risk.yml 'del(.repos.keelpost.required_checks)')
+expect 1 "repos.keelpost: is at L2 but risk.yml has no entry with required_checks" "a repo above L0 needs required_checks" -- cpol --dir "$d"
+d=$(pol checks205 risk.yml '.repos.devpause.required_checks = {"lint": ".github/workflows/check.yml"}')
+expect 1 "repos.devpause.required_checks: must be hq#205's, unchanged" "hq#205's required_checks stay unchanged" -- cpol --dir "$d"
+d=$(pol widen risk.yml '.categories.tests += ["**/*.sh"]')
+expect 1 "is not in 0006's list" "a category can't widen" -- cpol --dir "$d"
+d=$(pol limits risk.yml '.limits.files = 21')
+expect 1 "limits.files: must be a whole number from 0 to 0006's 20" "a limit can't rise past 0006's" -- cpol --dir "$d"
+d=$(pol quorum risk.yml '.quorum.classes.R0.approvals = 0')
+expect 1 "quorum.classes.R0.approvals: must be a whole number, at least 1" "R0 needs an approval" -- cpol --dir "$d"
+d=$(pol r3approve risk.yml '.quorum.classes.R3.extra = []')
+expect 1 "quorum.classes.R3.extra: must hold owner-r3-approval" "R3 keeps Raghav's approval" -- cpol --dir "$d"
+d=$(pol approvers risk.yml '.quorum.approvers.never -= ["owner"]')
+expect 1 "quorum.approvers.never: drops 'owner'" "the owner's seat never counts as an approver" -- cpol --dir "$d"
+d=$(pol flags risk-cases.json '(.cases[] | select(.name == "a test and a code file") | .want.flags) = []')
+expect 1 "case 'a test and a code file' in cf-mcp-template: flags \['tests_and_code'\], want \[\]" "a case with the wrong flags fails" -- cpol --dir "$d"
+d=$(pol caselevel risk-cases.json '(.cases[] | select(.name == "pennypact docs merge at L1") | .want.level) = "L2"')
+expect 1 "level L1, want L2" "a case with the wrong level fails" -- cpol --dir "$d"
+# The mutation check, as in hq#205: dropping each of these fails a case in risk-cases.json, not only the floor comparison.
+mutation() {
+  d=$(pol "$1" "$2" "$3")
+  expect 1 "$4" "mutation: $6 fails a case" -- cpol --dir "$d"
+  expect 1 "$5" "mutation: $6 fails the floor check" -- cpol --dir "$d"
+}
+mutation smoke risk.yml '.r3.global -= ["**/*smoke*"]' \
+  "case 'hq#205 always R3: test/smoke.test.mjs' in cf-mcp-template: class R0, want R3" "r3.global: drops '\*\*/\*smoke\*'" "dropping **/*smoke*"
+mutation agentsvm risk.yml '.r3.global -= ["agents/vm/**"]' \
+  "case 'hq#205 always R3: agents/vm/README.md' in cf-mcp-template: class R0, want R3" "r3.global: drops 'agents/vm/\*\*'" "dropping agents/vm/**"
+mutation pennypact risk.yml '.repos.pennypact.deny -= ["apps/*/src/**"]' \
+  "case 'pennypact a test under apps/./src is R3' in pennypact: class R0, want R3" "repos.pennypact.deny: drops 'apps/\*/src/\*\*'" "dropping pennypact's apps/*/src/**"
+mutation auth risk.yml '.r3.auth_words = []' \
+  "case 'hq#205 always R3: src/secrets.ts' in cf-mcp-template: class R1, want R3" "r3.auth_words: drops 'auth'" "dropping the auth words"
 
 # The verify skill (#15) tells the reader to prefer `make check` and how to report Docker-less runs.
 skill=$root/plugins/setkernel/skills/verify/SKILL.md
