@@ -505,6 +505,44 @@ done <<'EOF'
 # A segment of blanks only passes under every shell (dash exits 2 on a shift too many).
 0 0|true && (ls)
 0 0|{ ls; }
+# Everyday commands where a segment runs out of words (round 2, item A): they pass under dash too.
+0 0|x=1; echo "$x"
+0 0|branch=$(git branch --show-current); echo "$branch"
+0 0|if [ -f README.md ]; then\n  echo yes\nfi
+0 0|for f in *.md; do\n  wc -l "$f"\ndone
+0 0|{ echo a; echo b; } > out.txt
+0 0|git -c user.name=bot -c user.email=bot@example.com commit -m "fix: x"
+0 0|out=$(npm test 2>&1); echo "$out" | tail -20
+# A git word after the command word that runs reset or clean without blocking is not a hook failure (B).
+0 0|git submodule foreach git reset -q HEAD
+0 0|find . -name '*.orig' -exec git reset -q -- {} \\;
+0 0|git submodule foreach git clean -d --dry-run
+2 0|git submodule foreach git reset --hard
+# A heredoc body is commands only if the command that reads it (or a later one in its pipeline, or a
+# command it is a $(…) in) runs a shell, not when a shell word is elsewhere on the line (C).
+0 0|source .venv/bin/activate && pytest -q && git commit -F - <<'EOM'\nfix: x\n\nThe worker runs git push after the run.\nEOM
+0 0|cat > docs/source/deploy.rst <<'EOM'\nThen run git push origin feat to publish\nEOM
+0 0|. .venv/bin/activate && cat > notes.md <<'EOM'\nthe worker runs git push\nEOM
+0 0|source .venv/bin/activate && gh pr create --title t --body "$(cat <<'EOM'\nthe worker runs git push\nEOM\n)"
+2 0|sudo -u root bash <<'EOM'\ngit push origin x\nEOM
+2 0|<<'EOM' bash\ngit push origin x\nEOM
+2 0|cat <<'EOM' | sudo bash\ngit push origin x\nEOM
+2 0|. /dev/stdin <<'EOM'\ngit push origin x\nEOM
+2 0|eval "$(cat <<'EOM'\ngit push origin x\nEOM\n)"
+# Likewise a here-string, and only up to the end of the command that reads it (D).
+0 0|read -r owner repo <<< "$pair"; bash tests/run.sh && git commit -m "test: cover git push spellings"
+0 0|bash <<< 'echo hi'; git commit -m "docs: the worker runs git push"
+2 0|bash <<<"$(true); git push origin x"
+2 0|<<<'git push origin x' bash
+# { and } split words only as reserved words, so ${…} and {} stay in their word (E). Without the
+# variable the old split still misses these, as on main.
+2 0|git -C ${PWD} push --force origin HEAD:refs/heads/x
+2 0|find . -maxdepth 0 -exec git -C {} push origin HEAD:refs/heads/y \\;
+2 0|git -C ${dir} push origin x
+2 0|parallel git -C {} push ::: a b
+2 0|{ git push origin x; }
+2 0|echo {}; git push origin x
+0 0|echo {a,b} && git commit -m "git push later"
 # Issue part 2: spellings sk-push-guard blocks.
 2 0|git subtree push --prefix=d origin x
 2 0|git send-pack origin HEAD:refs/heads/x

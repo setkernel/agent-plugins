@@ -67,17 +67,21 @@ block() {
 }
 
 # scrub (awk, no-push mode only) prints the command line the way the shell reads it, so text that is
-# only data is not checked as a command. Heredoc bodies are dropped unless a shell reads them
-# (`bash <<EOF`, `cat <<EOF | sh`, `eval`, `source`); an unquoted body keeps its $(…) and backticks,
-# which the shell runs. Quoted and escaped text stays one word: its blanks, operators, quotes and
-# backslashes become control characters (decode turns them back). A $(…) or backtick, quoted or not,
-# is left in its word as the character \023 ($ph) and its command is checked on a line of its own
-# after the rest (`git -C "$(pwd)" push` still reads as a push). A $((…)) is checked that way too:
-# bash runs `$((git push) 2>&1)` as a command, and arithmetic never reads as a push. Comments are
-# dropped, but not a # inside ${…}, where it is text. A here-string on a line that runs a shell is
-# kept as commands, and a pipe into a shell after text that names a git push adds a `git push` line.
-# On text it can't read (an unclosed quote, $(…) or ${…}, or a backtick nested in a backtick) it
-# exits 1, and check_cmd checks the raw text instead, as it does without the variable.
+# only data is not checked as a command. A heredoc body is dropped unless a shell reads it: the
+# command that reads it runs one (`bash <<EOF`, `. /dev/stdin <<EOF`), or a later command in its
+# pipeline (`cat <<EOF | sh`), or a command it is a $(…) in (`bash -c "$(cat <<EOF …)"`); a shell
+# word elsewhere on the line (`source venv && git commit -F - <<EOF`) doesn't count. An unquoted body
+# keeps its $(…) and backticks, which the shell runs. Quoted and escaped text stays one word: its
+# blanks, operators, quotes and backslashes become control characters (decode turns them back), and
+# so do { and } unless they are reserved words (`git -C ${dir} push`, `-exec git -C {} push`).
+# A $(…) or backtick, quoted or not, is left in its word as the character \023 ($ph) and its command
+# is checked on a line of its own after the rest (`git -C "$(pwd)" push` still reads as a push).
+# A $((…)) is checked that way too: bash runs `$((git push) 2>&1)` as a command, and arithmetic never
+# reads as a push. Comments are dropped, but not a # inside ${…}, where it is text. A here-string a
+# shell reads is kept as commands up to the end of that command, and a pipe into a shell after text
+# that names a git push adds a `git push` line. On text it can't read (an unclosed quote, $(…) or
+# ${…}, or a backtick nested in a backtick) it exits 1, and check_cmd checks the raw text instead, as
+# it does without the variable.
 scrub_awk='
 function enc(c) { return (c in E) ? E[c] : c }
 function quo(c) { return raw ? c : enc(c) }
@@ -86,6 +90,36 @@ function emitc(x) { buf[lv] = buf[lv] x; cv = cv x }
 function shellword(t) {
   return (" " t " ") ~ /[^A-Za-z0-9_.-]((ba|z|da|k)?sh|eval|source)[^A-Za-z0-9_]/ || (";" t) ~ /[;&|(][ \t]*\.[ \t]/
 }
+# readsh(t): true if the simple command t (scrubbed text) runs a shell: one of its words is a shell,
+# eval or source, or its command word is `.`.
+function readsh(t,   w, n, k, f) {
+  n = split(t, w, /[ \t]+/); f = 1
+  for (k = 1; k <= n; k++) {
+    if (w[k] == "") continue
+    if (f && w[k] ~ /^([A-Za-z_][A-Za-z0-9_]*=.*|!|then|do|else|elif|if|while|until|time)$/) continue
+    if (f && w[k] == ".") return 1
+    f = 0
+    if (w[k] ~ /^([^\/]*\/)*((ba|z|da|k)?sh|eval|source)$/) return 1
+  }
+  return 0
+}
+# segat(b): where the simple command at the end of the scrubbed text b starts.
+function segat(b,   k) { for (k = length(b); k > 0; k--) if (index(";&|\n({", substr(b, k, 1))) break; return k }
+# hreads(j, hdr): true if a shell reads heredoc j, decided at the end of its header line hdr: its
+# command or a later one in its pipeline runs a shell, or a command it is a $(…) or backtick in does
+# (bash -c "$(cat <<EOF …)"). Where the command is hard to tell (after a } or ), or the $(…) it was
+# in has closed), any shell word on the header line counts, as before.
+function hreads(j, hdr,   p, q, m, k) {
+  if (PL[j] > lv || PG[j] != GEN[PL[j]]) return shellword(hdr)
+  p = substr(buf[PL[j]], PS[j] + 1)
+  if (match(p, /[;&\n]/)) p = substr(p, 1, RSTART - 1)
+  if (p ~ /[)}]/) return shellword(hdr)
+  m = split(p, q, "|")
+  for (k = 1; k <= m; k++) if (readsh(q[k])) return 1
+  for (k = PL[j] - 1; k >= 1; k--) if (readsh(substr(buf[k], segat(buf[k]) + 1))) return 1
+  return 0
+}
+function nest() { lv++; buf[lv] = ""; CZ[lv] = 0; GEN[lv]++ }
 function lineof(p) { while (ln < nl && O[ln + 1] <= p) ln++; return ln }
 function pop(st) { return substr(st, 1, length(st) - 1) }
 # lex(text, mode): mode C reads a command line, mode H an unquoted heredoc body. The stack st holds
@@ -93,9 +127,9 @@ function pop(st) { return substr(st, 1, length(st) - 1) }
 # G a ( inside $( or $((, B a backtick, V a ${ outside quotes, W a ${ inside them. Output goes to
 # buf[lv]; each $(…), $((…)) and backtick opens the next level and, when it closes, adds that level
 # to the lines after the rest (subs).
-function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, body, cmp, hdr, hl, save, base, cs) {
-  lv++; base = lv; buf[lv] = ""; CZ[lv] = 0
-  st = mode; n = length(s); ws = 1; pend = ""; cs = 1
+function lex(s, mode,   st, t, i, n, c, d, ws, k, m, e, j, p, dq, dash, body, cmp, hdr, hl, save, base, cs, keep) {
+  nest(); base = lv
+  st = mode; n = length(s); ws = 1; cs = 1
   for (i = 1; i <= n; i++) {
     c = substr(s, i, 1); t = substr(st, length(st))
     # In a backtick the shell drops the backslash before ` and $ and reads the text again, so \` there
@@ -123,17 +157,17 @@ function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, bod
     # ends it, and # is text, not a comment (echo ${x:-a #b}; git push runs the push).
     if (t == "V" || t == "W") {
       if (c == "}") { st = pop(st); ws = 0 }
-      if (c == "}" || index("\\\047\"`$", c) == 0) { if (t == "W") emit(quo(c)); else emitc(c); continue }
+      if (c == "}" || index("\\\047\"`$", c) == 0) { if (t == "W") emit(quo(c)); else emitc(enc(c)); continue }
     }
     if (c == "$" && substr(s, i + 1, 1) == "{") {
-      if (t == "D" || t == "H" || t == "W") { emit("$" quo("{")); st = st "W" } else { emitc("${"); st = st "V" }
+      if (t == "D" || t == "H" || t == "W") { emit("$" quo("{")); st = st "W" } else { emitc("$" enc("{")); st = st "V" }
       i++; ws = 0; continue
     }
     # The rest is read as commands.
-    if (c == "$" && substr(s, i + 1, 2) == "((") { emitc(PH); lv++; buf[lv] = ""; CZ[lv] = 0; st = st "R"; i += 2; ws = 1; continue }
-    if (c == "$" && substr(s, i + 1, 1) == "(") { emitc(PH); lv++; buf[lv] = ""; CZ[lv] = 0; st = st "P"; i++; ws = 1; continue }
+    if (c == "$" && substr(s, i + 1, 2) == "((") { emitc(PH); nest(); st = st "R"; i += 2; ws = 1; continue }
+    if (c == "$" && substr(s, i + 1, 1) == "(") { emitc(PH); nest(); st = st "P"; i++; ws = 1; continue }
     if (c == "`" && t == "B") { subs = subs "\n" buf[lv]; lv--; st = pop(st); ws = 0; continue }
-    if (c == "`") { emitc(PH); lv++; buf[lv] = ""; CZ[lv] = 0; st = st "B"; ws = 1; continue }
+    if (c == "`") { emitc(PH); nest(); st = st "B"; ws = 1; continue }
     if (c == "\\") { i++; d = substr(s, i, 1); if (d != "\n") { emitc(enc(d)); ws = 0 }; continue }
     if (c == "\047") { st = st "S"; ws = 0; continue }
     if (c == "\"") { st = st "D"; ws = 0; continue }
@@ -147,9 +181,14 @@ function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, bod
     if (c == ")" && t == "R") { subs = subs "\n" buf[lv]; lv--; st = pop(st); if (substr(s, i + 1, 1) == ")") i++; ws = 0; continue }
     if (c == ")") { emitc(c); ws = 1; if (t == "G") st = pop(st); continue }
     if (c == "#" && ws) { while (i < n && substr(s, i + 1, 1) != "\n") i++; continue }
+    # A here-string a shell reads is kept as commands, up to the end of that command. Where it comes
+    # before the command word (<<<"…" bash), any shell word on the line counts.
     if (substr(s, i, 3) == "<<<") {
+      if (mode == "C") {
+        p = substr(buf[lv], segat(buf[lv]) + 1); e = p; gsub(/[A-Za-z_][A-Za-z0-9_]*=[^ \t]*/, "", e)
+        if ((p ~ /[)}]/ || e !~ /[^ \t]/) ? shellword(L[lineof(i)]) : readsh(p)) { raw = 1; rawlv = lv }
+      }
       emitc("<<<"); i += 2; ws = 1
-      if (mode == "C" && shellword(L[lineof(i)])) raw = 1
       continue
     }
     if (substr(s, i, 2) == "<<" && mode == "C" && index(st, "R") == 0) {
@@ -167,20 +206,22 @@ function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, bod
         if (c == "\\") { d = d substr(s, k + 1, 1); k += 2; dq = 1; continue }
         d = d c; k++
       }
+      if (d != "") { np++; PD[np] = dash; PQ[np] = dq; PW[np] = d; PL[np] = lv; PG[np] = GEN[lv]; PS[np] = segat(buf[lv]) }
       emitc("<<"); ws = 1
-      if (d != "") { pend = pend dash dq d "\034"; i = k - 1 } else i++
+      if (d != "") i = k - 1; else i++
       continue
     }
     if (c == "\n") {
-      emitc(c); ws = 1; raw = 0; cs = i + 1; hdr = cv; cv = ""
-      if (pend == "") continue
-      # The heredoc bodies start on the next line. Skip them unless a shell reads them: the header
-      # line runs one (its commands, cv, not its quoted text), or ends in a pipe and the line after
-      # the last body runs one. If a body has no end line, the bodies are read as commands.
+      emitc(c); ws = 1; raw = 0; rawlv = -1; cs = i + 1; hdr = cv; cv = ""
+      if (np == 0 || mode != "C") continue
+      # The heredoc bodies start on the next line. Skip them unless a shell reads them (hreads), or
+      # the header line ends in a pipe and the line after the last body runs one. If a body has no
+      # end line, the bodies are read as commands.
+      keep = 0
+      for (j = 1; j <= np; j++) if (hreads(j, hdr)) keep = 1
       hl = lineof(i); k = hl
-      while (pend != "") {
-        e = index(pend, "\034"); one = substr(pend, 1, e - 1); pend = substr(pend, e + 1)
-        dash = substr(one, 1, 1); dq = substr(one, 2, 1); d = substr(one, 3); body = ""
+      for (j = 1; j <= np; j++) {
+        dash = PD[j]; dq = PQ[j]; d = PW[j]; body = ""
         for (m = k + 1; m <= nl; m++) {
           cmp = L[m]
           if (dash == "1") sub(/^\t+/, "", cmp)
@@ -191,8 +232,8 @@ function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, bod
         if (dq == "0") { save = raw; raw = 0; lex(body, "H"); raw = save }
         k = m
       }
-      pend = ""; cv = ""
-      if (k > hl && !shellword(hdr) && !(hdr ~ /\|[ \t\n]*$/ && shellword(L[k + 1]))) i = O[k] + length(L[k]) - 1
+      np = 0; cv = ""
+      if (k > hl && !keep && !(hdr ~ /\|[ \t\n]*$/ && shellword(L[k + 1]))) i = O[k] + length(L[k]) - 1
       continue
     }
     # A pipe into a shell: the shell runs what the commands before it print, so a git push anywhere
@@ -203,7 +244,11 @@ function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, bod
       e = substr(e, 1, k - 1); gsub(/\\?\n/, " ", e)
       if (e ~ PIPESH && (" " substr(s, cs, i - cs) " ") ~ GITPUSH) subs = subs "\ngit push"
     }
-    if (index(";&|", c)) cs = i + 1
+    if (index(";&|", c)) { cs = i + 1; if (lv == rawlv) { raw = 0; rawlv = -1 } }
+    # { and } are words of their own only as reserved words (`{ ls; }`); elsewhere (`-C {}`, `{a,b}`)
+    # they are part of a word.
+    if (c == "{" && !(ws && substr(s, i + 1, 1) ~ /^([ \t\n]|)$/)) c = enc(c)
+    if (c == "}" && !(ws && substr(s, i + 1, 1) ~ /^([ \t\n;&|)<>]|)$/)) c = enc(c)
     emitc(c); ws = index(" \t;&|<>", c) > 0
   }
   if (st != mode) bad = 1
@@ -221,7 +266,7 @@ BEGIN {
 END {
   nl = split(s, L, "\n"); O[1] = 1
   for (k = 1; k < nl; k++) O[k + 1] = O[k] + length(L[k]) + 1
-  ln = 1; r = lex(s, "C")
+  ln = 1; rawlv = -1; r = lex(s, "C")
   if (bad) exit 1
   printf "%s%s", r, subs
 }'
@@ -397,6 +442,7 @@ check_git() {
         *) (cwd=$dir; check_cmd "git $exp $*") || exit $? ;;
       esac ;;
   esac
+  return 0 # a check that didn't block (a last test that failed) is not a hook failure
 }
 
 check_push() {
