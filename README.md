@@ -20,7 +20,11 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
 | `plugins/setkernel/policy/holds.md` | Generated. The holds as text; the plugin's SessionStart hook prints it into every Claude session. |
 | `bin/dependabot-policy` | Writes the holds into a repo's `.github/dependabot.yml` (`--check` for drift; `crosses` tells whether a version crosses a hold). Python 3, standard library only. |
-| `tests/run.sh` | Tests for the generator, the session hook, the verify gate, the D1 guard, the persona hook and `bin/dependabot-policy`. |
+| `policy/risk.yml` | The merge gate's risk classes (hq#210): which class, R0 to R3, a PR is in each repo, and what each class needs to merge. JSON, which YAML 1.2 also reads. |
+| `policy/autonomy.json` | Each person's level, L0 to L4, per repo: the highest class the gate may merge for them there. Anyone or anything not listed is L0. |
+| `policy/risk-cases.json` | Cases every implementation of the two files must pass, here and in sk-ctl's gate. |
+| `bin/check-policy` | Validates the three files and runs the cases (`tests/run.sh` and CI run it). Python 3, standard library only. |
+| `tests/run.sh` | Tests for the generator, the session hook, the verify gate, the D1 guard, the persona hook, `bin/dependabot-policy` and `bin/check-policy`. |
 
 In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `setkernel:reviewer`.
 
@@ -122,6 +126,25 @@ command text, so a script, `/usr/bin/git`, a variable or `python -c` still gets 
 `Read` rules don't stop a program that opens the file itself
 ([Bash rule limits](https://code.claude.com/docs/en/permissions#bash-rule-limits)). The boundary
 is the OS sandbox and keeping credentials out of the agent's reach: setkernel/hq#186.
+
+## Merge gate policy
+
+hq#210's gate, in sk-ctl, reads `policy/risk.yml` and `policy/autonomy.json` at a pinned commit of
+this repo. A PR's class is the highest any rule in `risk.yml` gives it: R0 for docs and tests, R1 for
+a small fix to existing code, R2 for anything bigger, and R3 for every path 0006 and hq#205 keep with
+Raghav, plus `policy/**` and every path in agent-plugins, merge-gate, sk-ctl and the estate repos.
+The author's level in that repo caps what the gate may merge:
+
+| Level | The gate may merge |
+|---|---|
+| L0 | nothing; every PR goes to Raghav (anyone or any repo not listed, bots, and Raghav as an author) |
+| L1 | R0 |
+| L2 | R0 and R1 |
+| L3 | R0 to R2 (no repo is above L2 until R2 merges are allowed) |
+| L4 | R0 to R3, with R3's approval step |
+
+A change to either file is R3. Edit it, run `bin/check-policy` and `tests/run.sh`, and add a case to
+`policy/risk-cases.json` for any rule you change.
 
 ## Version holds
 

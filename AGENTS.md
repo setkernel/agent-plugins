@@ -7,7 +7,8 @@ secrets, branches and commits, the end-of-run report) come from setkernel's cent
 
 ## What this repo is
 The centre of setkernel's agent setup: the `setkernel` Claude Code plugin and its marketplace, the
-org rules (`rules/org-rules.md`), and the source of the server-managed settings.
+org rules (`rules/org-rules.md`), the source of the server-managed settings, and the merge gate's
+policy (`policy/risk.yml`, `policy/autonomy.json`).
 Public on purpose so sessions and CI read it without credentials.
 
 ## Commands
@@ -15,15 +16,16 @@ Public on purpose so sessions and CI read it without credentials.
 # install:  nothing to install; needs POSIX sh, jq, diff (and shellcheck for lint)
 # test:     bash tests/run.sh          (SHELL_UNDER_TEST=dash or "busybox sh" to try other shells)
 # generate: bin/generate               (rewrites the generated files; commit them with the change)
+# policy:   bin/check-policy           (validates policy/risk.yml, autonomy.json and risk-cases.json)
 # lint:     bin/generate --check
 #           shellcheck -S warning bin/generate plugins/setkernel/hooks/*.sh tests/run.sh
-#           for f in .claude-plugin/marketplace.json plugins/setkernel/.claude-plugin/plugin.json plugins/setkernel/hooks/hooks.json managed/*.json; do jq empty "$f"; done
+#           for f in .claude-plugin/marketplace.json plugins/setkernel/.claude-plugin/plugin.json plugins/setkernel/hooks/hooks.json managed/*.json policy/*.json policy/risk.yml; do jq empty "$f"; done
 # plugin:   claude plugin validate .   (the only expected warning is the missing `version`)
 # try it:   a renamed copy (managed seats ignore --plugin-dir ./plugins/setkernel: the plugin is locked)
 #           d=$(mktemp -d) && cp -R plugins/setkernel "$d/" && jq '.name = "setkernel-try"' plugins/setkernel/.claude-plugin/plugin.json >"$d/setkernel/.claude-plugin/plugin.json" && claude --plugin-dir "$d/setkernel"
 ```
-CI (`.github/workflows/check.yml`) runs the tests, the drift check, ShellCheck and the JSON check
-on every PR and push to `main`.
+CI (`.github/workflows/check.yml`) runs the tests, the drift check, `bin/check-policy`, ShellCheck and
+the JSON check on every PR and push to `main`.
 
 ## Deploy
 No deploy workflow. Merging to `main` is the release: `plugin.json` has no `version`, so every
@@ -41,8 +43,15 @@ the Claude org console. No secrets or Infisical values are involved.
   marketplace, enabled plugin).
 - `bin/generate`: builds the generated files below from those sources.
 - `bin/dependabot-policy`: writes the version holds into a repo's `dependabot.yml`.
+- `policy/versions.json`: the org version holds.
+- `policy/risk.yml`: which risk class (R0 to R3) a PR is, per repo, and each class's quorum (hq#210).
+  `policy/autonomy.json`: each person's level (L0 to L4) per repo, which caps the class the gate may
+  merge. `policy/risk-cases.json`: cases every implementation must pass. hq#210's gate in sk-ctl
+  reads all three at a pinned commit of this repo; the comment at the top of each file says how.
+- `bin/check-policy`: validates those three files and runs the cases with a reference matcher
+  (Python 3 standard library, like `bin/dependabot-policy`).
 - `tests/run.sh`: tests for the generator, the session hook, the verify gate, the D1 guard, the
-  persona hook and `bin/dependabot-policy`.
+  persona hook, `bin/dependabot-policy` and `bin/check-policy`.
 
 ## Traps and don't-touch
 - Generated, never edit by hand: `managed/settings.json` and `plugins/setkernel/policy/holds.md`.
@@ -65,6 +74,21 @@ the Claude org console. No secrets or Infisical values are involved.
 - `forceLoginOrgUUID` in `managed/settings.base.json` is the setkernel Team org ID, which Claude Lead
   committed (agent-plugins#36). An agent never changes it. If it is ever a `REPLACE_WITH_` placeholder,
   `bin/generate` leaves the key out of `managed/settings.json` (pasted, no login would match it) and prints a note.
+- A change to `policy/risk.yml` or `policy/autonomy.json` is R3 (hq#210), whatever else the PR holds.
+  - `risk.yml` is JSON, which YAML 1.2 also reads, so neither the VMs nor the Worker needs a YAML parser.
+    `bin/check-policy` refuses anything `jq` can't parse.
+  - `bin/check-policy` holds copies of 0006's floor, hq#205's global deny, never lists and
+    required checks (hq `de93ba3`). The policy may add to them, never drop from them.
+  - No level goes above L2 until R2 merges are allowed (P4). A test pins that.
+  - An autonomy entry above L0 installs nothing: setkernel-merge goes on a repo only by Raghav's step.
+- The policy leaves out 0006's E4 and E5 (hq#209 decision 6: setkernel-merge has none of
+  Administration, Deployments, Environments or Commit statuses, and hq#343's `/verify?sha=` takes over
+  E5's purpose). What that drops:
+  - E4 kept out a repo that adds a deploy-on-push workflow. devpause plans one; on 2026-10-27 it has only
+    `check.yml`. Now the only stop is that workflow's own PR, which is R3 because `.github/**` is on
+    0006's floor.
+  - E5 failed keelpost on its three `freeplan-probe` Deployments. They are still there (2026-10-27), and
+    nothing checks them now.
 - Keep `rules/org-rules.md` to about 40–60 lines: it is loaded into every Claude session.
 - Don't add a `version` to `plugin.json`; without it every commit on `main` is a release.
 - A change to the plugin hits every seat on merge; test it here first.

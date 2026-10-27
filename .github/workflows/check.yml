@@ -1,4 +1,5 @@
-# CI for the org plugin: generator, hook and dependabot-policy tests, generated-file drift, ShellCheck.
+# CI for the org plugin: generator, hook, dependabot-policy and check-policy tests, generated-file drift,
+# the merge gate's policy files, ShellCheck, JSON.
 name: check
 
 on:
@@ -15,11 +16,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Tests (generator, session hook, dependabot-policy)
+      - name: Tests (generator, hooks, dependabot-policy, check-policy)
         run: bash tests/run.sh
       - name: Generated files are current
         run: bin/generate --check
+      - name: Merge gate policy is valid (risk.yml, autonomy.json, risk-cases.json)
+        run: python3 bin/check-policy
       - name: ShellCheck
         run: shellcheck -S warning bin/generate plugins/setkernel/hooks/*.sh tests/run.sh
       - name: JSON is valid
-        run: for f in .claude-plugin/marketplace.json plugins/setkernel/.claude-plugin/plugin.json plugins/setkernel/hooks/hooks.json managed/*.json policy/versions.json; do jq empty "$f"; done
+        run: for f in .claude-plugin/marketplace.json plugins/setkernel/.claude-plugin/plugin.json plugins/setkernel/hooks/hooks.json managed/*.json policy/versions.json policy/risk.yml policy/autonomy.json policy/risk-cases.json; do jq empty "$f"; done
