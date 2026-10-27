@@ -73,10 +73,11 @@ block() {
 # backslashes become control characters (decode turns them back). A $(…) or backtick, quoted or not,
 # is left in its word as the character \023 ($ph) and its command is checked on a line of its own
 # after the rest (`git -C "$(pwd)" push` still reads as a push). $((…)) is left out, but a $(…) in it
-# is checked. Comments are dropped. A here-string on a line that runs a shell is kept as commands,
-# and a pipe into a shell after text that names a git push adds a `git push` line.
-# On text it can't read (an unclosed quote or $(…)) it exits 1, and check_cmd checks the raw text
-# instead, as it does without the variable.
+# is checked. Comments are dropped, but not a # inside ${…}, where it is text. A here-string on a
+# line that runs a shell is kept as commands, and a pipe into a shell after text that names a git
+# push adds a `git push` line. On text it can't read (an unclosed quote, $(…) or ${…}, or a backtick
+# nested in a backtick) it exits 1, and check_cmd checks the raw text instead, as it does without
+# the variable.
 scrub_awk='
 function enc(c) { return (c in E) ? E[c] : c }
 function quo(c) { return raw ? c : enc(c) }
@@ -89,13 +90,17 @@ function lineof(p) { while (ln < nl && O[ln + 1] <= p) ln++; return ln }
 function pop(st) { return substr(st, 1, length(st) - 1) }
 # lex(text, mode): mode C reads a command line, mode H an unquoted heredoc body. The stack st holds
 # a letter per open context: S single quote, A dollar-single quote, D double quote, P $(, R $((,
-# G a ( inside $( or $((, B a backtick. Output goes to buf[lv]; each $(…), $((…)) and backtick
-# opens the next level, and a $(…) or backtick adds its level to the lines after the rest (subs).
+# G a ( inside $( or $((, B a backtick, V a ${ outside quotes, W a ${ inside them. Output goes to
+# buf[lv]; each $(…), $((…)) and backtick opens the next level, and a $(…) or backtick adds its
+# level to the lines after the rest (subs).
 function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, body, cmp, hdr, hl, save, base, cs) {
   lv++; base = lv; buf[lv] = ""; CZ[lv] = 0
   st = mode; n = length(s); ws = 1; pend = ""; cs = 1
   for (i = 1; i <= n; i++) {
     c = substr(s, i, 1); t = substr(st, length(st))
+    # In a backtick the shell drops the backslash before ` and $ and reads the text again, so \` there
+    # opens a nested backtick and \$( a $(: too hard to follow, so the raw text is checked instead.
+    if (c == "\\" && index(st, "B") && t != "S" && t != "A" && substr(s, i + 1, 1) ~ /[`$]/) bad = 1
     if (t == "S") { if (c == "\047") st = pop(st); else emit(quo(c)); continue }
     if (t == "A") {
       if (c == "\047") st = pop(st)
@@ -112,7 +117,17 @@ function lex(s, mode,   st, t, i, n, c, d, ws, pend, k, m, e, one, dq, dash, bod
         else emit(quo(c))
         continue
       }
-      if (c != "`" && !(c == "$" && substr(s, i + 1, 1) == "(")) { emit(quo(c)); continue }
+      if (c != "`" && !(c == "$" && substr(s, i + 1, 1) ~ /[({]/)) { emit(quo(c)); continue }
+    }
+    # In ${…} quotes, escapes, $(…) and backticks are read as in a command, the first } outside them
+    # ends it, and # is text, not a comment (echo ${x:-a #b}; git push runs the push).
+    if (t == "V" || t == "W") {
+      if (c == "}") { st = pop(st); ws = 0 }
+      if (c == "}" || index("\\\047\"`$", c) == 0) { if (t == "W") emit(quo(c)); else emitc(c); continue }
+    }
+    if (c == "$" && substr(s, i + 1, 1) == "{") {
+      if (t == "D" || t == "H" || t == "W") { emit("$" quo("{")); st = st "W" } else { emitc("${"); st = st "V" }
+      i++; ws = 0; continue
     }
     # The rest is read as commands.
     if (c == "$" && substr(s, i + 1, 2) == "((") { emitc(PH); lv++; buf[lv] = ""; CZ[lv] = 0; st = st "R"; i += 2; ws = 1; continue }
@@ -199,7 +214,7 @@ BEGIN {
   src = " \t\n;&|(){}<>`\"\047\\"
   for (k = 1; k <= 16; k++) E[substr(src, k, 1)] = sprintf("%c", k < 9 ? k : k + 2)
   PH = sprintf("%c", 19)
-  PIPESH = "^[ \t&]*(([A-Za-z_][A-Za-z0-9_]*=[^ \t]*|env|sudo|doas|command|exec|nohup|nice|time|timeout|setsid|stdbuf|-[^ \t]*|[0-9]+)[ \t]+)*([^ \t;&|]*/)?(ba|z|da|k)?sh([ \t;&|)]|$)"
+  PIPESH = "^[ \t&]*(([A-Za-z_][A-Za-z0-9_]*=[^ \t]*|([^ \t;&|]*/)?(env|sudo|doas|command|exec|nohup|nice|time|timeout|setsid|stdbuf)|-[^ \t]*|[0-9]+)[ \t]+)*([^ \t;&|]*/)?(ba|z|da|k)?sh([ \t;&|)]|$)"
   GITPUSH = "[^A-Za-z0-9_-]git([^A-Za-z0-9_-]|[^A-Za-z0-9_-].*[^A-Za-z0-9_-])(push|send-pack)[^A-Za-z0-9_-]"
 }
 { s = (NR > 1) ? s "\n" $0 : $0 }
@@ -278,6 +293,7 @@ run_code() {
 # word after any -c (or a cluster ending in c, or --command) is checked as a command line too:
 # `find . -exec sh -c '…' \;`, `su -c '…'`, `script -qc '…'`.
 scan_git() {
+  [ $# -gt 0 ] || return 0 # a segment of blanks only (`{ ls; }`): dash exits 2 on a shift too many
   shift
   sc=''
   while [ $# -gt 0 ]; do
@@ -338,7 +354,10 @@ check_git() {
         case $d in /*) dir=$d ;; *) dir=$dir/$d ;; esac
         shift 2 ;;
       -c) # An alias set here to push, reset, clean or a shell command only serves to get past this.
-        case ${2-} in alias.*=push* | alias.*=reset* | alias.*=clean* | alias.*=!*) block "a git alias set on the command line (-c $2)" ;; esac
+        # The section name is read in any case (-c ALIAS.x=push).
+        case ${2-} in [Aa][Ll][Ii][Aa][Ss].*=push* | [Aa][Ll][Ii][Aa][Ss].*=reset* | [Aa][Ll][Ii][Aa][Ss].*=clean* | [Aa][Ll][Ii][Aa][Ss].*=!*)
+          block "a git alias set on the command line (-c $(decode "$2"))" ;;
+        esac
         [ $# -ge 2 ] || return 0
         shift 2 ;;
       --git-dir | --work-tree | --namespace | --config-env | --attr-source | --super-prefix) [ $# -ge 2 ] || return 0; shift 2 ;;

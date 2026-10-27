@@ -477,9 +477,30 @@ done <<'EOF'
 2 0|find . -maxdepth 0 -exec sh -c 'git push origin x' \\;
 0 0|psql -c "select 'git push'"
 2 0|echo 'git push origin x' |\nbash
+2 0|echo 'git push origin x' | /usr/bin/env bash
 # A case pattern's ) inside $(…) does not end the $(.
 2 0|echo "$(case a in a) git push origin x;; esac)"
 0 0|case "$(uname)" in Linux) echo ok;; esac
+# A # inside ${…} is text, not a comment, so the push after it runs; the first } outside quotes ends it.
+2 0|echo ${x:-a #b}; git push origin x
+2 2|echo ${x:-a #b}; git push -f origin x
+2 0|echo ${x:+ #}; git push origin x
+2 0|echo ${x#a #}; git push origin x
+2 0|echo ${x//a/ #}; git push origin x
+2 0|echo "${x:-"a #b"}"; git push origin x
+2 0|echo ${x:-'}' #b}; git push origin x
+2 0|echo ${x:-a\\} #b}; git push origin x
+2 0|echo ${x:-$(git push origin x)}
+0 0|echo ${x:-a} #b; git push origin x
+0 0|git commit -m "fix: ${HOME}, not ~; the worker runs git push"
+# A backtick (or \\$) nested in a backtick runs: the raw text is checked.
+2 0|echo `echo \\`git push origin x\\``
+2 0|echo "`echo \\`git push origin x\\``"
+2 0|echo `echo \\$(git push origin x)`
+0 0|git commit -m "fix \\`foo\\`; the worker runs git push"
+# A segment of blanks only passes under every shell (dash exits 2 on a shift too many).
+0 0|true && (ls)
+0 0|{ ls; }
 # Issue part 2: spellings sk-push-guard blocks.
 2 0|git subtree push --prefix=d origin x
 2 0|git send-pack origin HEAD:refs/heads/x
@@ -492,6 +513,7 @@ done <<'EOF'
 2 0|git --attr-source HEAD push origin x
 2 0|git config alias.q push && git q origin x
 2 0|git config alias.q '!git push' && git q origin x
+2 2|git -c ALIAS.q=push q origin x
 2 0|git -C "dir with spaces" push origin x
 # The wrappers are read without the variable too, so a force push through them is blocked there as well.
 2 2|setsid git push -f origin x

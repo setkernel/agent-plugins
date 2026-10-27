@@ -50,7 +50,9 @@ git guard covers only the git commands a text rule can't pin down. The other hoo
   the spellings hq's `sk-push-guard` blocks too (`git send-pack`, `git subtree push`, an alias set
   in the same command line, a `git` word after any wrapper), and reads quotes and heredocs the way
   the shell does: a commit message, heredoc body or search pattern that only mentions a push
-  passes, while `sh -c`, `eval`, `$(…)` and backticks are still read as commands (#43).
+  passes, while `sh -c`, `eval`, `$(…)` and backticks are still read as commands (#43). Like
+  `sk-push-guard`, it doesn't read a push inside another program's code (`python3 -c`, `perl -e`,
+  `node -e`).
 - **Guards fail closed**: the git guard and the D1 guard carry `"onFailure": "block"` in `hooks.json`
   (Claude Code 2.1.295 or later), so a guard that can't start, crashes, exits other than 0 or 2, or
   times out blocks the Bash call instead of letting it through (setkernel/hq#214, hq#332). A guard
