@@ -627,8 +627,7 @@ fi
 # (BSD awk on macOS rejects some regexes gawk takes) shows only as refusals. Run scrub's program on its
 # own under each awk here, so a compile error fails loudly. The input reaches every regex, including
 # the ones awk compiles only when used.
-sed -n "/^scrub_awk='\$/,/^}'\$/p" "$hooks/git-guard.sh" | sed -e '1d' -e '$d' >"$tmp/scrub.awk"
-printf '}\n' >>"$tmp/scrub.awk"
+cp "$hooks/lib/scrub.awk" "$tmp/scrub.awk"
 cat >"$tmp/scrub.in" <<'EOF'
 { echo ${x:-a #b} "q" $(git status) `pwd` $((1 + 2)) $'a\tb' {}; } | /usr/bin/env bash <<<"$y" # c
 x=1 . ./a && cat <<'EOM' | sh
@@ -643,6 +642,11 @@ for a in awk original-awk nawk mawk gawk 'busybox awk'; do
   expect 0 "echo done" "scrub compiles and reads a command line under $a" -- \
     env LC_ALL=C $a -f "$tmp/scrub.awk" "$tmp/scrub.in"
 done
+# The guard finds lib/scrub.awk from its own path, so it works from any working directory: scrub reads
+# the quoted mention as text (0); a failed lookup would fall back to the raw text and refuse it (2).
+guard_from_root() { (cd / && guard_env "$@"); }
+expect 0 "" "git-guard.sh finds scrub.awk from another working directory" -- \
+  guard_from_root "$nprepo" 'git commit -m "docs; git push later"' SETKERNEL_GUARD_NO_PUSH=1
 # Without jq the guard still reads the command (macOS before 15 ships no jq).
 nojq=$tmp/nojq
 mkdir -p "$nojq"

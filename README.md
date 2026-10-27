@@ -123,6 +123,9 @@ command text, so a script, `/usr/bin/git`, a variable or `python -c` still gets 
 ([Bash rule limits](https://code.claude.com/docs/en/permissions#bash-rule-limits)). The boundary
 is the OS sandbox and keeping credentials out of the agent's reach: setkernel/hq#186.
 
+The guard is a speed bump. In v4c the boundary for pushes is setkernel/hq#209, where agents get
+triage access and push through the broker.
+
 ## Version holds
 
 Some versions are held back org-wide until Raghav has tested the next one: Node and `@types/node`
