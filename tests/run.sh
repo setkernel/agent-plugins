@@ -542,6 +542,32 @@ done <<'EOF'
 2 0|cat <<'EOM' | sudo bash\ngit push origin x\nEOM
 2 0|. /dev/stdin <<'EOM'\ngit push origin x\nEOM
 2 0|eval "$(cat <<'EOM'\ngit push origin x\nEOM\n)"
+# A redirection glued to the shell word (sh<<EOF) is not part of it, and the & of a redirection
+# (2>&1, >&2, &>f) or of |& does not end the command (round 5).
+2 0|sh<<'EOM'\ngit push origin x\nEOM
+2 0|bash<<EOM\ngit push origin x\nEOM
+2 0|bash<<-EOM\n\tgit push origin x\n\tEOM
+2 0|echo x|sh<<'EOM'\ngit push origin x\nEOM
+2 0|true && sh<<'EOM'\ngit push origin x\nEOM
+2 0|(sh<<'EOM'\ngit push origin x\nEOM\n)
+2 0|{ sh<<'EOM'\ngit push origin x\nEOM\n}
+2 0|x=$(sh<<'EOM'\ngit push origin x\nEOM\n)
+2 0|sudo -u x sh<<'EOM'\ngit push origin x\nEOM
+2 0|sh 2>&1 <<'EOM'\ngit push origin x\nEOM
+2 0|bash >&2 <<'EOM'\ngit push origin x\nEOM
+2 0|bash &>/dev/null <<'EOM'\ngit push origin x\nEOM
+2 0|cat <<'EOM' 2>&1 | sh\ngit push origin x\nEOM
+2 0|cat <<'EOM' >&2 | sh\ngit push origin x\nEOM
+2 0|cat <<'EOM' |& bash\ngit push origin x\nEOM
+2 0|cat <<'EOM' |&\ngit push origin x\nEOM\nbash
+2 0|sh 2>&1 <<< 'git push origin x'
+2 0|echo 'git push origin x' 2>&1 | sh
+0 0|cat<<'EOM'\nthe worker runs git push\nEOM
+0 0|cat <<'EOM' 2>&1 | tee f\nthe worker runs git push\nEOM
+0 0|cat <<'EOM' >&2\nthe worker runs git push\nEOM
+0 0|cat >/tmp/sh <<'EOM'\nthe worker runs git push\nEOM
+0 0|git commit -F - 2>&1 <<'EOM'\nthe worker runs git push\nEOM
+0 0|bash -x tests/run.sh 2>&1 | tail; git commit -F - <<'EOM'\nthe worker runs git push\nEOM
 # Likewise a here-string, and only up to the end of the command that reads it (D).
 0 0|read -r owner repo <<< "$pair"; bash tests/run.sh && git commit -m "test: cover git push spellings"
 0 0|bash <<< 'echo hi'; git commit -m "docs: the worker runs git push"

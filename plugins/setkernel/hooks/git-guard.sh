@@ -91,8 +91,11 @@ function shellword(t) {
   return (" " t " ") ~ /[^A-Za-z0-9_.-]((ba|z|da|k)?sh|eval|source)[^A-Za-z0-9_]/ || (";" t) ~ /[;&|(][ \t]*\.[ \t]/
 }
 # readsh(t): true if the simple command t (scrubbed text) runs a shell: one of its words is a shell,
-# eval or source, or its command word is `.`.
+# eval or source, or its command word is `.`. A redirection and its target are not words, glued or
+# not (`sh<<EOF`, `sh 2>&1`, `cat >/tmp/sh`).
 function readsh(t,   w, n, k, f) {
+  gsub(/<<<[ \t]*[^ \t;&|<>()]*/, " ", t); gsub(/<<-?/, " ", t)
+  gsub(/(&>>?|[<>]&|>>|<>|>[|]?|<)[ \t]*[^ \t;&|<>()]*/, " ", t)
   n = split(t, w, /[ \t]+/); f = 1
   for (k = 1; k <= n; k++) {
     if (w[k] == "") continue
@@ -103,15 +106,24 @@ function readsh(t,   w, n, k, f) {
   }
   return 0
 }
-# segat(b): where the simple command at the end of the scrubbed text b starts.
-function segat(b,   k) { for (k = length(b); k > 0; k--) if (index(";&|\n({", substr(b, k, 1))) break; return k }
+# segat(b): where the simple command at the end of the scrubbed text b starts. The & of a
+# redirection (2>&1, <&3, &>f) does not end a command.
+function segat(b,   k, c) {
+  for (k = length(b); k > 0; k--) {
+    c = substr(b, k, 1)
+    if (c == "&" && (substr(b, k - 1, 1) ~ /[<>]/ || substr(b, k + 1, 1) == ">")) continue
+    if (index(";&|\n({", c)) break
+  }
+  return k
+}
 # hreads(j, hdr): true if a shell reads heredoc j, decided at the end of its header line hdr: its
 # command or a later one in its pipeline runs a shell, or a command it is a $(…) or backtick in does
 # (bash -c "$(cat <<EOF …)"). Where the command is hard to tell (after a } or ), or the $(…) it was
 # in has closed), any shell word on the header line counts, as before.
 function hreads(j, hdr,   p, q, m, k) {
   if (PL[j] > lv || PG[j] != GEN[PL[j]]) return shellword(hdr)
-  p = substr(buf[PL[j]], PS[j] + 1)
+  # The & of a redirection or of |& (a pipe that takes stderr too) does not end the command.
+  p = substr(buf[PL[j]], PS[j] + 1); gsub(/[<>]&|&>/, ">", p); gsub(/[|]&/, "|", p)
   if (match(p, /[;&\n]/)) p = substr(p, 1, RSTART - 1)
   if (p ~ /[)}]/) return shellword(hdr)
   m = split(p, q, "|")
@@ -233,7 +245,7 @@ function lex(s, mode,   st, t, i, n, c, d, ws, k, m, e, j, p, dq, dash, body, cm
         k = m
       }
       np = 0; cv = ""
-      if (k > hl && !keep && !(hdr ~ /\|[ \t\n]*$/ && shellword(L[k + 1]))) i = O[k] + length(L[k]) - 1
+      if (k > hl && !keep && !(hdr ~ /\|&?[ \t\n]*$/ && shellword(L[k + 1]))) i = O[k] + length(L[k]) - 1
       continue
     }
     # A pipe into a shell: the shell runs what the commands before it print, so a git push anywhere
@@ -244,7 +256,10 @@ function lex(s, mode,   st, t, i, n, c, d, ws, k, m, e, j, p, dq, dash, body, cm
       e = substr(e, 1, k - 1); gsub(/\\?\n/, " ", e)
       if (e ~ PIPESH && (" " substr(s, cs, i - cs) " ") ~ GITPUSH) subs = subs "\ngit push"
     }
-    if (index(";&|", c)) { cs = i + 1; if (lv == rawlv) { raw = 0; rawlv = -1 } }
+    # A command ends at ; & or |, but not at the & of a redirection (2>&1 | sh, &>f).
+    if (index(";&|", c) && !(c == "&" && (substr(s, i - 1, 1) ~ /[<>]/ || substr(s, i + 1, 1) == ">"))) {
+      cs = i + 1; if (lv == rawlv) { raw = 0; rawlv = -1 }
+    }
     # { and } are words of their own only as reserved words (`{ ls; }`); elsewhere (`-C {}`, `{a,b}`)
     # they are part of a word. (No regex here: BSD awk rejects an empty alternative like /^(x|)$/.)
     d = substr(s, i + 1, 1)
