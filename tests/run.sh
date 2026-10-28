@@ -88,8 +88,8 @@ expect 0 "true" "the setkernel marketplace and plugin stay" -- \
 # The org rules load into every session: keep them to the README's 40–60 lines (#23).
 expect 0 "" "the org rules stay within 60 lines" -- test "$(wc -l <"$root/rules/org-rules.md")" -le 60
 # The committed org rules carry the v4 merge quorum in place of "every PR needs Raghav's review" (#25).
-for marker in "in force as each repo's gate is qualified" 'R0: one non-author' 'R1: that plus an independent Codex review' \
-  'R2: two approvals, Codex and a visual diff' 'R3 (secrets, auth, money, DNS and tofu' 'R2 plus Raghav'"'"'s `/approve <sha>`' \
+for marker in "in force as each repo's gate is qualified" 'R0: one non-author' 'R1: two non-author approvals' \
+  'R2: two approvals and a visual diff' 'R3 (secrets, auth, money, DNS and tofu' 'R2 plus Raghav'"'"'s `/approve <sha>`' \
   'never merge your$' 'only the merge App merges' 'never counts as a Claude reviewer' 'decision 0007'; do
   expect 0 "$marker" "claudeMd's Changes names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
 done
