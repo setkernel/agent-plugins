@@ -95,11 +95,12 @@ for marker in "in force as each repo's gate is qualified" 'R0: one non-author' '
 done
 expect 1 '^0$' "claudeMd drops the old review-before-merge rule" -- \
   sh -c "jq -r .claudeMd '$root/managed/settings.json' | grep -c 'review before merge'"
-# Decision 0008, the allow-test-changes rule and the account rules (#36).
+# Decision 0008, the allow-test-changes rule and the account rules (#36), and its no-ticking exception (#52).
 for marker in 'Every secret lives in Infisical' 'named with its reason (decision 0008)' 'No paid App is ever installed' \
   'A revert is a new forward commit' "made only on Raghav's word" '`allow-test-changes: <reason>`' \
   'Only Raghav$' 'never add, edit or remove it' '(vega-, rigel-, lyra-, orion-setkernel) is a real person' \
-  'only they and their own agent use it' "acts on Raghav's login, so it never posts \`/approve <sha>\` or an APPROVE review"; do
+  'only they and their own agent use it' "acts on Raghav's login, so it never posts \`/approve <sha>\` or an APPROVE review" \
+  'only comment progress: any body edit, a tick too, voids it'; do
   expect 0 "$marker" "claudeMd names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
 done
 expect 1 '^0$' "claudeMd drops Cloudflare or the vault as the home of secrets" -- \

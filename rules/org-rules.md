@@ -6,9 +6,9 @@ Status lives only in GitHub issues on https://github.com/orgs/setkernel/projects
 READMEs, code comments or dashboards (https://github.com/setkernel/hq/blob/main/docs/tracking.md).
 1. Search first (`gh issue list --state all --search "<words>"`, here and in setkernel/hq); reuse an
    issue, never duplicate one. Add a new one: `gh project item-add 6 --owner setkernel --url <url>`.
-2. Starting: assign yourself, set board Status to In Progress. As you go: tick checkboxes, comment what changed,
-   with a link. PR body: `Closes setkernel/<repo>#N` (`Refs` if partial). Closing without a PR: comment how it
-   was verified. Blocked on the owner: label `owner`, set board Needs to Raghav, comment the exact action.
+2. Starting: assign yourself, set board Status to In Progress. As you go: tick checkboxes, comment what changed, with a link; with an
+   `allow-test-changes:` line in the body, only comment progress: any body edit, a tick too, voids it. PR body: `Closes setkernel/<repo>#N`
+   (`Refs` if partial). Closing without a PR: comment how it was verified. Blocked on the owner: label `owner`, set board Needs to Raghav, comment the exact action.
 ## When to stop
 Keep going while the next step doesn't need the owner; put status notes in the same message as the next
 action. Stop and ask before anything destructive, live or outward-facing:
