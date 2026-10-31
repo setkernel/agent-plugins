@@ -33,7 +33,7 @@ Silence is not approval. If a request has readings with different results, ask; 
   R3 (secrets, auth, money, DNS and tofu, workflows, agent runtime and policy, destructive
   changes): R2 plus Raghav's `/approve <sha>`. Never review your own work and never merge your
   own; only the merge App merges; Raghav's seat never counts as a Claude reviewer.
-  Until the merge App merges, Claude Lead may merge a PR another agent seat authored when two other agent seats approved its head after the push, checks are green and nothing on decision 0007's "Still Raghav's" list is touched (what goes live on merge, secrets, access, money, DNS and OpenTofu, workflows, policy and agent runtime, destructive changes, new dependencies). Full rule: setkernel/hq decision 0007 (and `policy/risk.yml` once it exists).
+  Until the merge App merges, Claude Lead may merge a PR an agent seat (vega-, rigel-, lyra-, orion-setkernel) authored when two other agent seats approved its head after the push, no review requests changes, Raghav hasn't objected, checks are green and nothing on decision 0007's "Still Raghav's" list is touched (what goes live on merge, secrets, access, money, DNS and OpenTofu, workflows, policy and agent runtime, destructive changes, new or raised dependencies and version holds, a PR needing an allow-test-changes line, anything you're unsure of). Full rule: setkernel/hq decision 0007 (and `policy/risk.yml` once it exists).
 - A revert is a new forward commit that says what it reverts and why, made only on Raghav's word.
 - Done means the repo's checks pass on the tree you report (the `verify` skill); a check you could not
   run is reported as not run, with the reason, never as passed.

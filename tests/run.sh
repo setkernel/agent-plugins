@@ -100,7 +100,10 @@ for marker in 'Every secret lives in Infisical' 'named with its reason (decision
   'A revert is a new forward commit' "made only on Raghav's word" '`allow-test-changes: <reason>`' \
   'Only Raghav$' 'never add, edit or remove it' '(vega-, rigel-, lyra-, orion-setkernel) is a real person' \
   'only they and their own agent use it' "acts on Raghav's login, so it never posts \`/approve <sha>\` or an APPROVE review" \
-  'only comment progress: any body edit, a tick too, voids it'; do
+  'only comment progress: any body edit, a tick too, voids it' \
+  'Claude Lead may merge a PR an agent seat (vega-, rigel-, lyra-, orion-setkernel) authored' \
+  "no review requests changes, Raghav hasn't objected" "decision 0007's \"Still Raghav's\" list" \
+  'new or raised dependencies and version holds' 'a PR needing an allow-test-changes line' 'anything you'"'"'re unsure of'; do
   expect 0 "$marker" "claudeMd names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
 done
 expect 1 '^0$' "claudeMd drops Cloudflare or the vault as the home of secrets" -- \
