@@ -62,9 +62,11 @@ the Claude org console. No secrets or Infisical values are involved.
 - The `PreToolUse` guards carry `"onFailure": "block"`: any exit but 0 (allow) or 2 (block) blocks every Bash
   call, so a guard must exit 0 on input it doesn't care about (`tests/run.sh` checks it).
 - `allowManagedHooksOnly` is on: only managed and this plugin's hooks run, so a hook belongs here.
-- `forceLoginOrgUUID` in `managed/settings.base.json` is the setkernel Team org ID, which Claude Lead
-  committed (agent-plugins#36). An agent never changes it. If it is ever a `REPLACE_WITH_` placeholder,
-  `bin/generate` leaves the key out of `managed/settings.json` (pasted, no login would match it) and prints a note.
+- Never put `forceLoginOrgUUID` in `managed/settings.base.json`. The agent VMs sign in with a
+  `claude setup-token` token, which can only make model requests, so Claude can't check its org and refuses
+  every run ("token could not be validated"). Pasted on 2026-11-01, it stopped every VM within minutes.
+  Pin a person's own machine to the Team org with a device file instead. If the key is ever a
+  `REPLACE_WITH_` placeholder, `bin/generate` leaves it out of `managed/settings.json` and prints a note.
 - Keep `rules/org-rules.md` to about 40–60 lines: it is loaded into every Claude session.
 - Don't add a `version` to `plugin.json`; without it every commit on `main` is a release.
 - A change to the plugin hits every seat on merge; test it here first.
