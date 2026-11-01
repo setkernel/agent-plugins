@@ -47,9 +47,9 @@ the Claude org console. No secrets or Infisical values are involved.
 ## Traps and don't-touch
 - Generated, never edit by hand: `managed/settings.json` and `plugins/setkernel/policy/holds.md`.
   Edit the source, run `bin/generate`, commit both.
-- This repo is public: no secrets, personal data or personas, ever. `rules/` names no private repo:
-  `tests/run.sh` fails on a `setkernel/<name>` outside its `public_repos` list (decision 0007). `persona.sh` fetches persona
-  text from private hq at session start; its tests use made-up text.
+- This repo is public: no secrets, personal data or personas, ever. `rules/` names no private repo
+  but hq: `tests/run.sh` fails on a `setkernel/<name>` outside its `allowed_repos` list (decision 0007).
+  `persona.sh` fetches persona text from private hq at session start; its tests use made-up text.
 - Hooks and scripts stay POSIX sh: the agent VMs have no Node. `bin/generate` avoids
   `$(cat <<HEREDOC)` because bash 3.2 (macOS `/bin/sh`) mis-parses it when the text holds an
   apostrophe.

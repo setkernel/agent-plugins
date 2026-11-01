@@ -94,20 +94,20 @@ for marker in '## Filing work' '`agent-ready`' '`## Why`' '`## Acceptance criter
   "intake repository named in the session's environment instructions" 'never push to the default branch'; do
   expect 0 "" "org-rules.md names $marker" -- grep -qF -- "$marker" "$root/rules/org-rules.md"
 done
-# The rules are public: every setkernel/<name> they name is on this list of names already public, so no private
-# repo is named (decision 0007, never public). orgs/setkernel/... is the org, not a repo.
-public_repos='hq agent-plugins'
+# The rules are public: every setkernel/<name> they name is on this list (agent-plugins, and hq, which is private but
+# named on purpose), so no other private repo is named (decision 0007, never public). orgs/setkernel/... is the org.
+allowed_repos='hq agent-plugins'
 unlisted_repos() {
   found=$(grep -ohiE '(orgs/)?setkernel/[a-z0-9._-]+' "$1"/* | grep -viE '^orgs/' | sed 's|^[^/]*/||; s/\.*$//' |
     tr 'A-Z' 'a-z' | sort -u | while read -r name; do
-      case " $public_repos " in *" $name "*) ;; *) echo "unlisted: setkernel/$name" ;; esac
+      case " $allowed_repos " in *" $name "*) ;; *) echo "unlisted: setkernel/$name" ;; esac
     done)
   if [ -n "$found" ]; then printf '%s\n' "$found"; return 1; fi
   echo "none unlisted"
 }
-expect 0 "^none unlisted$" "the org rules name no setkernel repo outside the public list" -- unlisted_repos "$root/rules"
+expect 0 "^none unlisted$" "the org rules name no setkernel repo outside the allowed list" -- unlisted_repos "$root/rules"
 printf 'Apps: setkernel/Example-App, https://github.com/setkernel/hq, setkernel/<repo>#N, lyra-setkernel.\n' >>"$tmp/copy/rules/org-rules.md"
-expect 1 "^unlisted: setkernel/example-app$" "a repo name outside the public list is caught" -- unlisted_repos "$tmp/copy/rules"
+expect 1 "^unlisted: setkernel/example-app$" "a repo name outside the allowed list is caught" -- unlisted_repos "$tmp/copy/rules"
 # The committed org rules carry the v4 merge quorum in place of "every PR needs Raghav's review" (#25).
 for marker in "in force as each repo's gate is qualified" 'R0: one non-author' 'R1: two non-author approvals' \
   'R2: two approvals and a visual diff' 'R3 (secrets, auth, money, DNS and tofu' 'R2 plus Raghav'"'"'s `/approve <sha>`' \
