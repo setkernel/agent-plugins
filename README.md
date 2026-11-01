@@ -13,7 +13,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | --- | --- |
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
 | `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context, the opt-in `SessionStart` persona hook, the git guard (`PreToolUse` on Bash, see below), a `PreToolUse` guard that denies remote D1 writes (always on: it has no env switch) and the opt-in `Stop` verify gate. `plugin.json` has no `version`, so every commit on `main` is a release. |
-| `rules/org-rules.md` | **The one source of the org rules.** It is also the public page every repo's `AGENTS.md` links to. |
+| `rules/org-rules.md` | **The one source of the org rules.** Every session gets them as `claudeMd` in the managed settings; a repo's `AGENTS.md` header links to setkernel/hq's `docs/repo-standard.md`, not to this file. |
 | `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace, the enabled plugin, org-only hooks (`allowManagedHooksOnly`), merging with the VMs' policy file (`managedSourcesBehavior: "merge"`), login, update and retention policy, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
 | `bin/generate` | The generator (POSIX sh + `jq`). |
@@ -26,7 +26,7 @@ In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `set
 
 ## Change the org rules, the deny list or the plugin
 
-1. Edit `rules/org-rules.md` (keep it about 40–60 lines: it is loaded into every Claude session),
+1. Edit `rules/org-rules.md` (keep it about 40–64 lines: it is loaded into every Claude session),
    `managed/settings.base.json`, or the files under `plugins/setkernel/`.
 2. Run `bin/generate`, then `tests/run.sh`. Commit the generated files with the change;
    `bin/generate --check` must print "generated files are current".

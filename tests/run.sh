@@ -60,8 +60,8 @@ for marker in '## Fonts' 'self-hosted' '`fonts.googleapis.com`' '`FONTCONFIG_FIL
   expect 0 "$marker" "claudeMd's Fonts names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
 done
 
-# Native Apple apps are exempt from the Fonts rule.
-expect 0 "setkernel/CardinalApp" "claudeMd exempts CardinalApp from the Fonts rule" -- jq -r .claudeMd "$root/managed/settings.json"
+# Native Apple apps are exempt from the Fonts rule, without naming a private repo (#58).
+expect 0 "Native Apple apps are exempt" "claudeMd exempts native Apple apps from the Fonts rule" -- jq -r .claudeMd "$root/managed/settings.json"
 
 # The version pin and console locks from the #23 research amendments.
 settings_key() { jq -e "$1" "$root/managed/settings.json"; }
@@ -85,8 +85,29 @@ expect 1 "" "strictKnownMarketplaces is left out" -- settings_key 'has("strictKn
 expect 0 "true" "the setkernel marketplace and plugin stay" -- \
   settings_key '.extraKnownMarketplaces.setkernel.source.repo == "setkernel/agent-plugins" and .enabledPlugins["setkernel@setkernel"] == true'
 
-# The org rules load into every session: keep them to the README's 40–60 lines (#23).
-expect 0 "" "the org rules stay within 60 lines" -- test "$(wc -l <"$root/rules/org-rules.md")" -le 60
+# The org rules load into every session: keep them to the README's 40–64 lines (#23, #58).
+expect 0 "" "the org rules stay within 64 lines" -- test "$(wc -l <"$root/rules/org-rules.md")" -le 64
+# Filing work: what an issue needs before sk-agent takes it, and where a cloud session files one (#58).
+for marker in '## Filing work' '`agent-ready`' '`## Why`' '`## Acceptance criteria` (`- [ ]` items)' '`## Files likely touched`' \
+  '`## Risk class` (R0–R3)' 'setkernel/hq for cross-repo or infra work' 'on board 6' '`owner` when only Raghav can do it' \
+  'Cloud sessions (`CLAUDE_CODE_REMOTE=true`)' '`gh api -X POST repos/{o}/{r}/issues`' \
+  "intake repository named in the session's environment instructions" 'never push to the default branch'; do
+  expect 0 "" "org-rules.md names $marker" -- grep -qF -- "$marker" "$root/rules/org-rules.md"
+done
+# The rules are public: every setkernel/<name> they name is on this list of names already public, so no private
+# repo is named (decision 0007, never public). orgs/setkernel/... is the org, not a repo.
+public_repos='hq agent-plugins'
+unlisted_repos() {
+  found=$(grep -ohiE '(orgs/)?setkernel/[a-z0-9._-]+' "$1"/* | grep -viE '^orgs/' | sed 's|^[^/]*/||; s/\.*$//' |
+    tr 'A-Z' 'a-z' | sort -u | while read -r name; do
+      case " $public_repos " in *" $name "*) ;; *) echo "unlisted: setkernel/$name" ;; esac
+    done)
+  if [ -n "$found" ]; then printf '%s\n' "$found"; return 1; fi
+  echo "none unlisted"
+}
+expect 0 "^none unlisted$" "the org rules name no setkernel repo outside the public list" -- unlisted_repos "$root/rules"
+printf 'Apps: setkernel/Example-App, https://github.com/setkernel/hq, setkernel/<repo>#N, lyra-setkernel.\n' >>"$tmp/copy/rules/org-rules.md"
+expect 1 "^unlisted: setkernel/example-app$" "a repo name outside the public list is caught" -- unlisted_repos "$tmp/copy/rules"
 # The committed org rules carry the v4 merge quorum in place of "every PR needs Raghav's review" (#25).
 for marker in "in force as each repo's gate is qualified" 'R0: one non-author' 'R1: two non-author approvals' \
   'R2: two approvals and a visual diff' 'R3 (secrets, auth, money, DNS and tofu' 'R2 plus Raghav'"'"'s `/approve <sha>`' \

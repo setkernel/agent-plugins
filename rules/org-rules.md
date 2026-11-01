@@ -9,6 +9,10 @@ READMEs, code comments or dashboards (https://github.com/setkernel/hq/blob/main/
 2. Starting: assign yourself, set board Status to In Progress. As you go: tick checkboxes, comment what changed, with a link; with an
    `allow-test-changes:` line in the body, only comment progress: any body edit, a tick too, voids it. PR body: `Closes setkernel/<repo>#N`
    (`Refs` if partial). Closing without a PR: comment how it was verified. Blocked on the owner: label `owner`, set board Needs to Raghav, comment the exact action.
+## Filing work
+Work for an agent is an issue in the repo it touches (setkernel/hq for cross-repo or infra work), on board 6, labelled `agent-ready`
+(and `owner` when only Raghav can do it), with body headings `## Why`, `## Acceptance criteria` (`- [ ]` items), `## Files likely touched`, `## Risk class` (R0–R3): sk-agent takes `agent-ready` off an issue that lacks one.
+Cloud sessions (`CLAUDE_CODE_REMOTE=true`) can't run `gh issue` or `gh project`: file with the GitHub tools or `gh api -X POST repos/{o}/{r}/issues` into the intake repository named in the session's environment instructions; never push to the default branch.
 ## When to stop
 Keep going while the next step doesn't need the owner; put status notes in the same message as the next
 action. Stop and ask before anything destructive, live or outward-facing:
@@ -52,7 +56,7 @@ Every typeface (sites, apps, documents, generated images) is a self-hosted Googl
 for image renders, committed with its licence or from a pinned Fontsource package. No runtime fonts from
 `fonts.googleapis.com`, `fonts.gstatic.com` or any CDN, and no system fonts (Arial, Georgia, `-apple-system`) except a
 generic last fallback. Images render with a pinned fontconfig (`FONTCONFIG_FILE`). Swaps: Arimo for Arial, Gelasio for
-Georgia, Tinos for Times New Roman, Cousine for Courier New. Native Apple apps (setkernel/CardinalApp) are exempt.
+Georgia, Tinos for Times New Roman, Cousine for Courier New. Native Apple apps are exempt.
 ## End-of-run report
 Mark what you couldn't confirm and where you looked. End every run with these headings in order, skipping empty ones:
 - **Blocked on owner**: decisions or steps only the owner can take, and what happens once done.

@@ -47,7 +47,8 @@ the Claude org console. No secrets or Infisical values are involved.
 ## Traps and don't-touch
 - Generated, never edit by hand: `managed/settings.json` and `plugins/setkernel/policy/holds.md`.
   Edit the source, run `bin/generate`, commit both.
-- This repo is public: no secrets, personal data or personas, ever. `persona.sh` fetches persona
+- This repo is public: no secrets, personal data or personas, ever. `rules/` names no private repo:
+  `tests/run.sh` fails on a `setkernel/<name>` outside its `public_repos` list (decision 0007). `persona.sh` fetches persona
   text from private hq at session start; its tests use made-up text.
 - Hooks and scripts stay POSIX sh: the agent VMs have no Node. `bin/generate` avoids
   `$(cat <<HEREDOC)` because bash 3.2 (macOS `/bin/sh`) mis-parses it when the text holds an
@@ -67,6 +68,6 @@ the Claude org console. No secrets or Infisical values are involved.
   every run ("token could not be validated"). Pasted on 2026-11-01, it stopped every VM within minutes.
   Pin a person's own machine to the Team org with a device file instead. If the key is ever a
   `REPLACE_WITH_` placeholder, `bin/generate` leaves it out of `managed/settings.json` and prints a note.
-- Keep `rules/org-rules.md` to about 40–60 lines: it is loaded into every Claude session.
+- Keep `rules/org-rules.md` to about 40–64 lines (`tests/run.sh` fails above 64): it is loaded into every Claude session.
 - Don't add a `version` to `plugin.json`; without it every commit on `main` is a release.
 - A change to the plugin hits every seat on merge; test it here first.
