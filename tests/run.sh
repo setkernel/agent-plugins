@@ -100,7 +100,8 @@ allowed_repos='hq agent-plugins'
 unlisted_repos() {
   found=$(grep -ohiE '(orgs/)?setkernel/[a-z0-9._-]+' "$1"/* | grep -viE '^orgs/' | sed 's|^[^/]*/||; s/\.*$//' |
     tr 'A-Z' 'a-z' | sort -u | while read -r name; do
-      case " $allowed_repos " in *" $name "*) ;; *) echo "unlisted: setkernel/$name" ;; esac
+      # (pattern) form: bash 3.2 (macOS /bin/bash) can't parse a bare `pattern)` inside $( ).
+      case " $allowed_repos " in (*" $name "*) ;; (*) echo "unlisted: setkernel/$name" ;; esac
     done)
   if [ -n "$found" ]; then printf '%s\n' "$found"; return 1; fi
   echo "none unlisted"
