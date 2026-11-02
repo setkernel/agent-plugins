@@ -12,7 +12,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | Path | What it is |
 | --- | --- |
 | `.claude-plugin/marketplace.json` | The `setkernel` marketplace. It lists one plugin. |
-| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context, the opt-in `SessionStart` persona hook, the git guard (`PreToolUse` on Bash, see below), a `PreToolUse` guard that denies remote D1 writes (always on: it has no env switch) and the opt-in `Stop` verify gate. `plugin.json` has no `version`, so every commit on `main` is a release. |
+| `plugins/setkernel/` | The org plugin: skills `verify`, `review-blockers`, `ship-pr`, `request-review`; subagents `explorer`, `reviewer`; POSIX-shell hooks: `SessionStart` session context, the opt-in `SessionStart` persona hook, the git guard (`PreToolUse` on Bash, see below), a `PreToolUse` guard that denies remote D1 writes (always on: it has no env switch) and the opt-in `Stop` verify gate. `plugin.json` has no `version`, so every commit on `main` is a release. |
 | `rules/org-rules.md` | **The one source of the org rules.** Every session gets them as `claudeMd` in the managed settings; a repo's `AGENTS.md` header links to setkernel/hq's `docs/repo-standard.md`, not to this file. |
 | `managed/settings.base.json` | Hand-edited part of the server-managed settings: the org `permissions.deny` list, the marketplace, the enabled plugin, org-only hooks (`allowManagedHooksOnly`), merging with the VMs' policy file (`managedSourcesBehavior: "merge"`), login, update and retention policy, and the Claude Code telemetry `env` (OTLP to sk-obs01, content redacted; setkernel/hq#90). |
 | `managed/settings.json` | Generated. The draft JSON Raghav pastes into the Claude org console (server-managed settings). |
@@ -20,7 +20,7 @@ from `main`; every merge needs Raghav's code-owner approval.
 | `policy/versions.json` | **The one source of the org version holds** (Node, TypeScript, PHPCS, …). |
 | `plugins/setkernel/policy/holds.md` | Generated. The holds as text; the plugin's SessionStart hook prints it into every Claude session. |
 | `bin/dependabot-policy` | Writes the holds into a repo's `.github/dependabot.yml` (`--check` for drift; `crosses` tells whether a version crosses a hold). Python 3, standard library only. |
-| `tests/run.sh` | Tests for the generator, the session hook, the verify gate, the D1 guard, the persona hook and `bin/dependabot-policy`. |
+| `tests/run.sh` | Tests for the generator, the session hook, the verify gate, the D1 guard, the persona hook, the request-review skill and `bin/dependabot-policy`. |
 
 In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `setkernel:reviewer`.
 

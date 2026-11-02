@@ -7,7 +7,7 @@
     {
       "name": "setkernel",
       "source": "./plugins/setkernel",
-      "description": "Org-wide skills (verify, review-blockers, ship-pr), subagents (explorer, reviewer) and shell-only hooks."
+      "description": "Org-wide skills (verify, review-blockers, ship-pr, request-review), subagents (explorer, reviewer) and shell-only hooks."
     }
   ]
 }

@@ -27,6 +27,6 @@ jobs:
           tar -xJf "$RUNNER_TEMP/$f" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/shellcheck-v0.11.0" >> "$GITHUB_PATH"
       - name: ShellCheck
-        run: shellcheck -S warning bin/generate plugins/setkernel/hooks/*.sh tests/run.sh
+        run: shellcheck -S warning bin/generate plugins/setkernel/hooks/*.sh plugins/setkernel/skills/request-review/*.sh tests/run.sh
       - name: JSON is valid
         run: for f in .claude-plugin/marketplace.json plugins/setkernel/.claude-plugin/plugin.json plugins/setkernel/hooks/hooks.json managed/*.json policy/versions.json; do jq empty "$f"; done

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests for bin/generate, the session hook, the verify gate, the D1 guard, the persona hook and bin/dependabot-policy. POSIX sh; needs jq for the generator tests.
+# Tests for bin/generate, the session hook, the verify gate, the D1 guard, the persona hook, the request-review skill and bin/dependabot-policy. POSIX sh; needs jq for the generator tests.
 # Usage: tests/run.sh            (set SHELL_UNDER_TEST=dash or "busybox sh" to try other shells)
 set -eu
 
@@ -1022,6 +1022,87 @@ skill=$root/plugins/setkernel/skills/verify/SKILL.md
 expect 0 "run \`make check\`" "the verify skill runs make check when the repo has the target" -- grep -F 'run `make check`' "$skill"
 expect 0 "needs Docker (or OrbStack)" "the verify skill reports a Docker-less run as not run" -- grep -F 'needs Docker (or OrbStack)' "$skill"
 expect 0 "Steps 3 and 4 apply either way" "the verify skill keeps the grep and setup steps with a check target" -- grep -F 'Steps 3 and 4 apply either way' "$skill"
+
+# The request-review skill (#63): a stub gh with a made-up team; state files say what GitHub does.
+rr=$root/plugins/setkernel/skills/request-review/request-review.sh
+rstub=$tmp/rr-stub
+rs=$tmp/rr-state
+mkdir -p "$rstub"
+cat >"$rstub/gh" <<EOF
+#!/bin/sh
+echo "\$*" >>"$rs/calls"
+case "\$*" in
+  "api user --jq .login") echo zz-me ;;
+  "api --paginate orgs/setkernel/teams/engineering/members --jq .[].login") printf '%s\n' zz-author zz-me realRaghavGupta zz-a zz-b zz-c ;;
+  "api repos/example/app/pulls/1") cat "$rs/pr.json" ;;
+  "api repos/example/app/pulls/1/requested_reviewers --jq .users[].login") cat "$rs/requested" ;;
+  *" search/issues "*) l=\${*##*review-requested:}; l=\${l%% *}; cat "$rs/load-\$l" 2>/dev/null || echo 0 ;;
+  *"POST repos/example/app/pulls/1/requested_reviewers -f reviewers[]="*)
+    l=\${*##*=}
+    grep -qx "\$l" "$rs/refuse" 2>/dev/null && { echo "gh: Reviews may only be requested from collaborators (HTTP 422)" >&2; exit 1; }
+    if grep -qx "\$l" "$rs/drop" 2>/dev/null && ! grep -qx "\$l" "$rs/dropped" 2>/dev/null; then echo "\$l" >>"$rs/dropped"; else echo "\$l" >>"$rs/requested"; fi ;;
+  "api -X POST repos/example/app/issues/1/labels -f labels[]=agent-review") ;;
+  *) echo "gh stub: unexpected \$*" >&2; exit 1 ;;
+esac
+EOF
+chmod +x "$rstub/gh"
+# rr_pr <state> <draft> <labels JSON>: a fresh PR by zz-author with nobody requested, zz-a the busiest.
+rr_pr() {
+  rm -rf "$rs" && mkdir -p "$rs" && : >"$rs/requested" && echo 5 >"$rs/load-zz-a" && echo 1 >"$rs/load-zz-c"
+  printf '{"html_url":"https://github.com/example/app/pull/1","user":{"login":"zz-author"},"state":"%s","draft":%s,"labels":[%s]}\n' "$1" "$2" "$3" >"$rs/pr.json"
+}
+# shellcheck disable=SC2120 # expect passes the arguments
+rr_run() {
+  # shellcheck disable=SC2086 # sh_cmd may be "busybox sh"
+  env PATH="$rstub:$PATH" "$@" $sh_cmd "$rr" example/app 1
+}
+posts() { grep -c "^api -X POST repos/example/app/$1" "$rs/calls" || true; }
+
+rr_pr open false ''
+expect 0 "^Review requested from zz-b zz-c on https://github.com/example/app/pull/1; labelled agent-review.$" \
+  "request-review asks the two least busy seats and prints them with the PR URL" -- rr_run
+expect 0 "^none$" "the author, the caller and Raghav are neither counted nor asked" -- \
+  sh -c "grep -E 'zz-author|zz-me|realRaghavGupta' '$rs/calls' | grep -v 'teams/engineering' || echo none"
+expect 0 "^2$" "one POST per seat" -- posts pulls/1/requested_reviewers
+expect 0 "^0$" "each POST carries one login" -- sh -c "grep -c 'reviewers\[\]=.*reviewers\[\]=' '$rs/calls' || true"
+expect 0 "^label last$" "the label comes after the reviewers" -- \
+  awk '/POST .*requested_reviewers/ { r = NR } /POST .*labels/ { l = NR } END { print (r && l > r) ? "label last" : "wrong order" }' "$rs/calls"
+expect 0 "^0$" "it never uses gh pr edit and never comments" -- sh -c "grep -cE '^pr |comments|reviews' '$rs/calls' || true"
+
+rr_pr open false '' && echo zz-b >"$rs/refuse"
+expect 0 "GitHub refused zz-b; trying the next candidate" "a refused login is skipped for the next candidate" -- rr_run
+expect 0 "^zz-c zz-a $" "so the next two are requested" -- sh -c "tr '\n' ' ' <'$rs/requested'"
+
+rr_pr open false '' && echo zz-b >"$rs/drop"
+expect 0 "zz-b was dropped; asking once more" "a dropped login is asked once more" -- rr_run
+expect 0 "^3$" "with one more POST" -- posts pulls/1/requested_reviewers
+expect 0 "^zz-b zz-c $" "and both seats are on" -- sh -c "tr '\n' ' ' <'$rs/requested'"
+
+# rr_refuses <state> <draft> <labels JSON> <reason>
+rr_refuses() {
+  rr_pr "$1" "$2" "$3"
+  expect 1 "$4" "request-review refuses a PR that $4" -- rr_run
+  expect 0 "^0$" "and asks nobody" -- posts ''
+}
+rr_refuses closed false '' "is closed"
+rr_refuses open true '' "is a draft"
+rr_refuses open false '{"name":"human"}' "is labelled human"
+rr_pr open false ''
+expect 1 "refused inside an sk-agent run: sk-agent asks its own peers" "request-review refuses inside an sk-agent run" -- rr_run SETKERNEL_GUARD_NO_PUSH=1
+expect 1 "not an owner/repo" "and a malformed repo" -- env PATH="$rstub:$PATH" $sh_cmd "$rr" 'example/app/x' 1
+
+rr_pr open false '' && printf '%s\n' zz-c zz-a >"$rs/requested"
+expect 0 "^Review requested from zz-c zz-a on" "a re-run with two seats requested exits 0" -- rr_run
+expect 0 "^0$" "and asks nobody new" -- posts pulls/1/requested_reviewers
+expect 0 "^1$" "but makes sure the label is there" -- posts issues/1/labels
+rr_pr open false '{"name":"agent-review"}' && printf '%s\n' zz-c zz-a >"$rs/requested"
+expect 0 "^Review requested from" "with the label already on" -- rr_run
+expect 0 "^0$" "it posts nothing" -- posts ''
+
+rr_pr open false '' && printf '%s\n' zz-a zz-b >"$rs/refuse"
+expect 1 "only 1 of 2 seats on https://github.com/example/app/pull/1; no agent-review label added. Asked: zz-b zz-c zz-a. Failed: zz-b zz-a." \
+  "with fewer than two seats it exits 1 and says who was asked and who failed" -- rr_run
+expect 0 "^0$" "and adds no label" -- posts issues/1/labels
 
 # The suite passes with SETKERNEL_GUARD_NO_PUSH=1 in its environment (as in sk-agent runs). One nested run, not recursive.
 if [ -z "${SETKERNEL_TESTS_NESTED:-}" ]; then
