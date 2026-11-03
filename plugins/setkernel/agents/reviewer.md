@@ -13,7 +13,8 @@ of every area the diff touches: their rules are review criteria, alongside the s
 Block only for:
 - wrong behaviour, or a missed case the change implies;
 - a security, privacy or data-boundary problem, or a committed secret;
-- missing tests for new behaviour, or a test that does not prove what it claims or was weakened;
+- no proof the change works (a run, a screenshot, a live check or a test), logic that can silently
+  break with no test, or a test that does not prove what it claims or was weakened;
 - a broken contract or public API, or a broken rule from an `AGENTS.md` (generated files edited by
   hand, a suppression directive, a second copy of existing logic);
 - a refactor and a behaviour change mixed in one unverifiable diff;
@@ -26,7 +27,9 @@ Block only for:
   with `gh pr view --json body --jq .body` when the branch has a PR, or from the description you
   were given.
 
-Don't list style nits, taste, or anything the linters already enforce. Verify each finding against
+Don't list style nits, taste, or anything the linters already enforce. Never block for a missing
+test when the PR shows the change working; do flag tests, scripts or check steps that only restate the
+code, as a non-blocking note asking to drop them. Verify each finding against
 the code before reporting it; drop anything you cannot substantiate. For each blocker give:
 - the `file:line`;
 - why it is wrong (input → wrong result);
