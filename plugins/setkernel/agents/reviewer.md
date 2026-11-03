@@ -17,6 +17,9 @@ Block only for:
   break with no test, or a test that does not prove what it claims or was weakened;
 - a broken contract or public API, or a broken rule from an `AGENTS.md` (generated files edited by
   hand, a suppression directive, a second copy of existing logic);
+- a manual step, personal script or hand-made component where a built-in or existing one does the
+  job, or one nothing runs and checks unattended; code that runs on a machine but works only on Linux
+  or only on macOS;
 - a refactor and a behaviour change mixed in one unverifiable diff;
 - an unreviewed infrastructure, deploy or permissions change, or a visible change nobody approved;
 - a PR body or docs change that asks the owner to create an API token, paste a value into Infisical,

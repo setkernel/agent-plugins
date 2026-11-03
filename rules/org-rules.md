@@ -29,6 +29,7 @@ Silence is not approval. If a request has readings with different results, ask; 
 ## Changes
 - One focused change per issue, no drive-by refactors. Done means the output works where it is used, shown by a run, a screenshot or a live check. Branches `<type>/<short-name>` (Claude sessions and agents: see Who did it); conventional commits.
   Tests prove the output works; they are not the output. Add one only where logic can silently break, in an existing test file when one fits; never a script, check step or test for its own sake.
+- Robust and portable: use what the platform already does (the OS scheduler, GitHub, Claude Code) before writing anything; a manual step done twice becomes automation in a repo, never a personal script; new code replaces more than it adds. Code that runs on a machine works on macOS and Ubuntu: a call only one OS has needs the other's branch.
 - When the test-diff guard fails a PR, the issue it closes needs an `allow-test-changes: <reason>` line. Only Raghav
   or Claude Lead adds it, after reading every test edit; the PR's author and reviewers never add, edit or remove it.
 - Merging (in force as each repo's gate is qualified; until then every PR needs Raghav's review):
@@ -39,8 +40,7 @@ Silence is not approval. If a request has readings with different results, ask; 
   own; only the merge App merges; Raghav's seat never counts as a Claude reviewer.
   Until the merge App merges, Claude Lead may merge a PR an agent seat (vega-, rigel-, lyra-, orion-setkernel) authored when two other agent seats approved its head after the push, no review requests changes, Raghav hasn't objected, checks are green and nothing on decision 0007's "Still Raghav's" list is touched (what goes live on merge, secrets, access, money, DNS and OpenTofu, workflows, policy and agent runtime, destructive changes, new or raised dependencies and version holds, a PR needing an allow-test-changes line, anything you're unsure of). Full rule: setkernel/hq decision 0007 (and `policy/risk.yml` once it exists).
 - A revert is a new forward commit that says what it reverts and why, made only on Raghav's word.
-- Done means the repo's checks pass on the tree you report (the `verify` skill); a check you could not
-  run is reported as not run, with the reason, never as passed.
+- Done means the repo's checks pass on the tree you report (the `verify` skill); a check you could not run is reported as not run, with the reason, never as passed.
 ## Who did it
 Each employee account (vega-, rigel-, lyra-, orion-setkernel) is a real person's: only they and their own agent use it.
 Unsigned work from Raghav's account shows as him: use your branch prefix, and from his account sign:
