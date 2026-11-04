@@ -16,7 +16,7 @@ Public on purpose so sessions and CI read it without credentials.
 # test:     bash tests/run.sh          (SHELL_UNDER_TEST=dash or "busybox sh" to try other shells)
 # generate: bin/generate               (rewrites the generated files; commit them with the change)
 # lint:     bin/generate --check
-#           shellcheck -S warning bin/generate plugins/setkernel/hooks/*.sh tests/run.sh
+#           shellcheck -S warning bin/generate plugins/setkernel/hooks/*.sh plugins/setkernel/skills/request-review/*.sh tests/run.sh
 #           for f in .claude-plugin/marketplace.json plugins/setkernel/.claude-plugin/plugin.json plugins/setkernel/hooks/hooks.json managed/*.json; do jq empty "$f"; done
 # plugin:   claude plugin validate .   (the only expected warning is the missing `version`)
 # try it:   a renamed copy (managed seats ignore --plugin-dir ./plugins/setkernel: the plugin is locked)
@@ -31,10 +31,11 @@ commit on `main` reaches every seat that has the plugin installed, through plugi
 the Claude org console. No secrets or Infisical values are involved.
 
 ## Layout
-- `plugins/setkernel/`: the plugin: `skills/` (`verify`, `review-blockers`, `ship-pr`), `agents/`
-  (`explorer`, `reviewer`), `hooks/` (POSIX sh: the `SessionStart` context hook, `git-guard.sh`, the
-  `PreToolUse` git guard, `d1-guard.sh`, the always-on `PreToolUse` D1 guard, the opt-in `Stop`
-  verify gate, and the opt-in `persona.sh` `SessionStart` hook).
+- `plugins/setkernel/`: the plugin: `skills/` (`verify`, `review-blockers`, `ship-pr`, and
+  `request-review` with its POSIX-sh helper), `agents/` (`explorer`, `reviewer`), `hooks/` (POSIX
+  sh: the `SessionStart` context hook, `git-guard.sh`, the `PreToolUse` git guard, `d1-guard.sh`,
+  the always-on `PreToolUse` D1 guard, the opt-in `Stop` verify gate, and the opt-in `persona.sh`
+  `SessionStart` hook).
 - `.claude-plugin/marketplace.json`: the `setkernel` marketplace; lists the one plugin.
 - `rules/org-rules.md`: the one source of the org rules (becomes `claudeMd` in managed settings).
 - `managed/settings.base.json`: hand-edited part of the managed settings (`permissions.deny`,
@@ -42,7 +43,7 @@ the Claude org console. No secrets or Infisical values are involved.
 - `bin/generate`: builds the generated files below from those sources.
 - `bin/dependabot-policy`: writes the version holds into a repo's `dependabot.yml`.
 - `tests/run.sh`: tests for the generator, the session hook, the verify gate, the D1 guard, the
-  persona hook and `bin/dependabot-policy`.
+  persona hook, the request-review helper and `bin/dependabot-policy`.
 
 ## Traps and don't-touch
 - Generated, never edit by hand: `managed/settings.json` and `plugins/setkernel/policy/holds.md`.
