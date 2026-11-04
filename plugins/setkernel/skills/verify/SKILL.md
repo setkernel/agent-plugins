@@ -10,11 +10,16 @@ that tree, with its exact result.
 
 ## Find the checks
 
-0. If the repo root has a `check` target (the first of `GNUmakefile`, `makefile`, `Makefile` that
-   exists, with a line matching `^check[[:space:]]*:`), run `make check` and use it instead of
-   reading the workflows and running steps yourself: it runs every check CI runs. Report its
-   per-step PASS/FAIL lines and its final count. Without a `check` target, use steps 1–2.
-   Steps 3 and 4 apply either way: run the setup step before `make check`.
+0. If the repo root has a `check-diff` target (the first of `GNUmakefile`, `makefile`, `Makefile`
+   that exists, with a line matching `^check-diff[[:space:]]*:`), commit the work first, then run
+   `make check-diff`: it picks the steps the committed diff against the default branch needs.
+   Report its per-step PASS/FAIL lines and its final count; a step it did not pick is
+   "not selected", never "passed". Run the full `make check` only when you are asked to; CI runs
+   it on the default branch. Otherwise, if the repo root has a `check` target (a line matching
+   `^check[[:space:]]*:`), run `make check` and use it instead of reading the workflows and running
+   steps yourself: it runs every check CI runs. Report its per-step PASS/FAIL lines and its final
+   count. With neither target, use steps 1–2.
+   Steps 3 and 4 apply either way: run the setup step before `make check-diff` or `make check`.
 1. Read the "Commands" section of the root `AGENTS.md` (and any area `AGENTS.md` for the files you
    touched), then the CI workflow(s) in `.github/workflows/`.
 2. While iterating, run the smallest set of checks that can catch what the change could break.

@@ -38,7 +38,9 @@ the code before reporting it; drop anything you cannot substantiate. For each bl
 - why it is wrong (input → wrong result);
 - how to show it fails (a command, an input, a test), and the smallest fix.
 
-Run the repo's checks (see "Commands" in `AGENTS.md`) and report their exact result lines. Stay
+CI is already green on the PR, so rerun only the checks that confirm or rule out a finding:
+`make check-diff` if the repo has that target, else the checks under "Commands" in `AGENTS.md`. Report
+their exact result lines; a step `make check-diff` did not pick is "not selected", never "passed". Stay
 read-only: `git`, reads and the checks only; never edit files. If there are no blockers, say
 "No blockers" and list at most three non-blocking notes. End with "merge", "merge after fixes" or
 "don't merge".

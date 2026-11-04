@@ -1022,6 +1022,14 @@ skill=$root/plugins/setkernel/skills/verify/SKILL.md
 expect 0 "run \`make check\`" "the verify skill runs make check when the repo has the target" -- grep -F 'run `make check`' "$skill"
 expect 0 "needs Docker (or OrbStack)" "the verify skill reports a Docker-less run as not run" -- grep -F 'needs Docker (or OrbStack)' "$skill"
 expect 0 "Steps 3 and 4 apply either way" "the verify skill keeps the grep and setup steps with a check target" -- grep -F 'Steps 3 and 4 apply either way' "$skill"
+# It prefers `make check-diff` where a repo has it: committed work first, unpicked steps "not selected".
+expect 0 "make check-diff" "the verify skill runs make check-diff when the repo has the target" -- grep -F 'make check-diff' "$skill"
+expect 0 "commit the work first" "the verify skill commits before make check-diff" -- grep -F 'commit the work first' "$skill"
+expect 0 "not selected" "the verify skill reports unpicked steps as not selected" -- grep -F 'not selected' "$skill"
+expect 1 "" "the verify skill names no model, CLI or vendor" -- grep -iE 'claude|codex|anthropic|openai' "$skill"
+expect 0 "make check-diff" "the reviewer reruns make check-diff where the repo has it" -- grep -F 'make check-diff' "$root/plugins/setkernel/agents/reviewer.md"
+expect 0 "^none unlisted$" "the verify skill names no setkernel repo outside the allowed list" -- unlisted_repos "$root/plugins/setkernel/skills/verify"
+expect 0 "^none unlisted$" "the agents name no setkernel repo outside the allowed list" -- unlisted_repos "$root/plugins/setkernel/agents"
 
 # The suite passes with SETKERNEL_GUARD_NO_PUSH=1 in its environment (as in sk-agent runs). One nested run, not recursive.
 if [ -z "${SETKERNEL_TESTS_NESTED:-}" ]; then
