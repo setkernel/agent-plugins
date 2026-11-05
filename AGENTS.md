@@ -34,8 +34,7 @@ the Claude org console. No secrets or Infisical values are involved.
 - `plugins/setkernel/`: the plugin: `skills/` (`verify`, `review-blockers`, `ship-pr`, and
   `request-review` with its POSIX-sh helper), `agents/` (`explorer`, `reviewer`), `hooks/` (POSIX
   sh: the `SessionStart` context hook, `git-guard.sh`, the `PreToolUse` git guard, `d1-guard.sh`,
-  the always-on `PreToolUse` D1 guard, the opt-in `Stop` verify gate, and the opt-in `persona.sh`
-  `SessionStart` hook).
+  the always-on `PreToolUse` D1 guard, and the opt-in `Stop` verify gate).
 - `.claude-plugin/marketplace.json`: the `setkernel` marketplace; lists the one plugin.
 - `rules/org-rules.md`: the one source of the org rules (becomes `claudeMd` in managed settings).
 - `managed/settings.base.json`: hand-edited part of the managed settings (`permissions.deny`,
@@ -43,14 +42,13 @@ the Claude org console. No secrets or Infisical values are involved.
 - `bin/generate`: builds the generated files below from those sources.
 - `bin/dependabot-policy`: writes the version holds into a repo's `dependabot.yml`.
 - `tests/run.sh`: tests for the generator, the session hook, the verify gate, the D1 guard, the
-  persona hook, the request-review helper and `bin/dependabot-policy`.
+  request-review helper and `bin/dependabot-policy`.
 
 ## Traps and don't-touch
 - Generated, never edit by hand: `managed/settings.json` and `plugins/setkernel/policy/holds.md`.
   Edit the source, run `bin/generate`, commit both.
 - This repo is public: no secrets, personal data or personas, ever. `rules/` names no private repo
   but hq: `tests/run.sh` fails on a `setkernel/<name>` outside its `allowed_repos` list (decision 0007).
-  `persona.sh` fetches persona text from private hq at session start; its tests use made-up text.
 - Hooks and scripts stay POSIX sh: the agent VMs have no Node. `bin/generate` avoids
   `$(cat <<HEREDOC)` because bash 3.2 (macOS `/bin/sh`) mis-parses it when the text holds an
   apostrophe.
