@@ -11,7 +11,7 @@ READMEs, code comments or dashboards (https://github.com/setkernel/hq/blob/main/
    (`Refs` if partial). Closing without a PR: comment how it was verified. Blocked on the owner: label `owner`, set board Needs to Raghav, comment the exact action.
 ## Filing work
 Work for an agent is an issue in the repo it touches (setkernel/hq for cross-repo or infra work), on board 6, labelled `agent-ready`
-(and `owner` when only Raghav can do it), with body headings `## Why`, `## Acceptance criteria` (`- [ ]` items), `## Files likely touched`, `## Risk class` (R0–R3): sk-agent takes `agent-ready` off an issue that lacks one.
+(and `owner` when only Raghav can do it), with body headings `## Why`, `## Acceptance criteria` (`- [ ]` items), `## Files likely touched`, `## Risk class` (R0–R3): the Lead releases only an issue that has all four.
 Cloud sessions (`CLAUDE_CODE_REMOTE=true`) can't run `gh issue` or `gh project`: file with the GitHub tools or `gh api -X POST repos/{o}/{r}/issues` into the intake repository named in the session's environment instructions; never push to the default branch.
 ## When to stop
 Keep going while the next step doesn't need the owner; put status notes in the same message as the next
@@ -44,7 +44,7 @@ Silence is not approval. If a request has readings with different results, ask; 
 ## Who did it
 Each employee account (vega-, rigel-, lyra-, orion-setkernel) is a real person's: only they and their own agent use it.
 Unsigned work from Raghav's account shows as him: use your branch prefix, and from his account sign:
-- sk-agent on an agent VM: `agent/<issue>-<slug>`; no signature, keep the `_Automated: …_` line.
+- A seat's assign.yml run, on the seat's own login: `agent/<issue>-<slug>`; no signature.
 - Claude Code on the web (`CLAUDE_CODE_REMOTE=true`): `claude/<topic>`, `— Claude Cloud`.
 - raghav-dev (`hostname` is `raghav-dev`): `raghav-dev/<topic>`, `— raghav-dev`.
 - Raghav's Mac lead session: `lead/<topic>`, `— Claude Lead`.
