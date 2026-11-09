@@ -67,6 +67,6 @@ the Claude org console. No secrets or Infisical values are involved.
   every run ("token could not be validated"). Pasted on 2026-11-01, it stopped every VM within minutes.
   Pin a person's own machine to the Team org with a device file instead. If the key is ever a
   `REPLACE_WITH_` placeholder, `bin/generate` leaves it out of `managed/settings.json` and prints a note.
-- Keep `rules/org-rules.md` to about 40–64 lines (`tests/run.sh` fails above 64): it is loaded into every Claude session.
+- Keep `rules/org-rules.md` to about 40–80 lines (`tests/run.sh` fails above 80; one copy for every session and run, setkernel/hq#1521): it is loaded into every Claude session.
 - Don't add a `version` to `plugin.json`; without it every commit on `main` is a release.
 - A change to the plugin hits every seat on merge; test it here first.

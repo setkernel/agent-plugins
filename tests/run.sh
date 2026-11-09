@@ -85,8 +85,8 @@ expect 1 "" "strictKnownMarketplaces is left out" -- settings_key 'has("strictKn
 expect 0 "true" "the setkernel marketplace and plugin stay" -- \
   settings_key '.extraKnownMarketplaces.setkernel.source.repo == "setkernel/agent-plugins" and .enabledPlugins["setkernel@setkernel"] == true'
 
-# The org rules load into every session: keep them to the README's 40–64 lines (#23, #58).
-expect 0 "" "the org rules stay within 64 lines" -- test "$(wc -l <"$root/rules/org-rules.md")" -le 64
+# The org rules load into every session: keep them to the README's 40–80 lines (#23, #58; 80 since they became the one copy, setkernel/hq#1521).
+expect 0 "" "the org rules stay within 80 lines" -- test "$(wc -l <"$root/rules/org-rules.md")" -le 80
 # Filing work: what an issue needs before the Lead releases it, and where a cloud session files one (#58).
 for marker in '## Filing work' '`agent-ready`' '`## Why`' '`## Acceptance criteria` (`- [ ]` items)' '`## Files likely touched`' \
   '`## Risk class` (normal, or owner when it touches an owner path)' 'setkernel/hq for cross-repo or infra work' 'on board 6' '`owner` when only Raghav can do it' \

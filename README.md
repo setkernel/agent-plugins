@@ -26,7 +26,7 @@ In Claude Code the plugin's components are namespaced: `/setkernel:verify`, `set
 
 ## Change the org rules, the deny list or the plugin
 
-1. Edit `rules/org-rules.md` (keep it about 40–64 lines: it is loaded into every Claude session),
+1. Edit `rules/org-rules.md` (keep it about 40–80 lines: it is loaded into every Claude session),
    `managed/settings.base.json`, or the files under `plugins/setkernel/`.
 2. Run `bin/generate`, then `tests/run.sh`. Commit the generated files with the change;
    `bin/generate --check` must print "generated files are current".

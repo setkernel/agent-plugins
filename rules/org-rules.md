@@ -37,16 +37,28 @@ Silence is not approval. If a request has readings with different results, ask; 
   secrets, auth, money, DNS and tofu, policy, agent runtime, the Workers) also needs Raghav's approving review on the
   head, unless he opened it. Never review or merge your own work. No session on Raghav's seat, the Lead included,
   posts an APPROVE review or counts as a seat reviewer. Full rule: setkernel/hq `workers/gate/README.md`.
+- Request changes only for merge blockers: an unmet acceptance criterion, a bug with a reproduction, a secret
+  or security problem, a failing check, a change outside the issue. Anything else (naming, wording, style, a better
+  way) is at most 5 approval nits or a follow-up issue. A changes round fixes only those blockers; its re-review
+  checks only those fixes.
 - A revert is a new forward commit that says what it reverts and why, made only on Raghav's word.
 - Done means the repo's checks pass on the tree you report (the `verify` skill); a check you could not run is reported as not run, with the reason, never as passed.
 ## Who did it
 Each employee account (vega-, rigel-, lyra-, orion-setkernel) is a real person's: only they and their own agent use it.
+setkernel pays for 5 Claude seats, Raghav's and one per employee; no other seat, bot login or shared account is added.
+Each person may run 2–3 sessions at once on their own machines or VMs, sharing their seat's limits.
+Only the Lead does Lead work (releasing, assigning and splitting issues, summaries for Raghav): the timer on raghav-dev,
+or a session Raghav starts as Lead. The Lead keeps no scratch scripts or pollers: CI on the merge ref is the check.
 Unsigned work from Raghav's account shows as him: use your branch prefix, and from his account sign:
 - A seat's assign.yml run, on the seat's own login: `agent/<issue>-<slug>`; no signature.
 - Claude Code on the web (`CLAUDE_CODE_REMOTE=true`): `claude/<topic>`, `— Claude Cloud`.
 - raghav-dev (`hostname` is `raghav-dev`): `raghav-dev/<topic>`, `— raghav-dev`.
 - Raghav's Mac lead session: `lead/<topic>`, `— Claude Lead`.
 A Claude Lead or raghav-dev session acts on Raghav's login, so it never posts `/approve <sha>` or an APPROVE review.
+## When a service is down
+When GitHub, Claude, Infisical, Cloudflare, Grafana or a machine you need doesn't answer, stop that work: commit it
+locally on your branch, retry later, post one line to Buzz or the issue once you can. Never work around the outage
+(pushing elsewhere, copied secrets, hand merges, skipped checks); only Raghav decides break-glass.
 ## Version holds
 Never raise a held dependency (Node, TypeScript, PHPCS…; see the session context) past its hold until Raghav lifts it.
 ## Fonts
