@@ -87,9 +87,9 @@ expect 0 "true" "the setkernel marketplace and plugin stay" -- \
 
 # The org rules load into every session: keep them to the README's 40–64 lines (#23, #58).
 expect 0 "" "the org rules stay within 64 lines" -- test "$(wc -l <"$root/rules/org-rules.md")" -le 64
-# Filing work: what an issue needs before sk-agent takes it, and where a cloud session files one (#58).
+# Filing work: what an issue needs before the Lead releases it, and where a cloud session files one (#58).
 for marker in '## Filing work' '`agent-ready`' '`## Why`' '`## Acceptance criteria` (`- [ ]` items)' '`## Files likely touched`' \
-  '`## Risk class` (R0–R3)' 'setkernel/hq for cross-repo or infra work' 'on board 6' '`owner` when only Raghav can do it' \
+  '`## Risk class` (normal, or owner when it touches an owner path)' 'setkernel/hq for cross-repo or infra work' 'on board 6' '`owner` when only Raghav can do it' \
   'Cloud sessions (`CLAUDE_CODE_REMOTE=true`)' '`gh api -X POST repos/{o}/{r}/issues`' \
   "intake repository named in the session's environment instructions" 'never push to the default branch'; do
   expect 0 "" "org-rules.md names $marker" -- grep -qF -- "$marker" "$root/rules/org-rules.md"
@@ -109,10 +109,10 @@ unlisted_repos() {
 expect 0 "^none unlisted$" "the org rules name no setkernel repo outside the allowed list" -- unlisted_repos "$root/rules"
 printf 'Apps: setkernel/Example-App, https://github.com/setkernel/hq, setkernel/<repo>#N, lyra-setkernel.\n' >>"$tmp/copy/rules/org-rules.md"
 expect 1 "^unlisted: setkernel/example-app$" "a repo name outside the allowed list is caught" -- unlisted_repos "$tmp/copy/rules"
-# The committed org rules carry the v4 merge quorum in place of "every PR needs Raghav's review" (#25).
-for marker in "in force as each repo's gate is qualified" 'R0: one non-author' 'R1: two non-author approvals' \
-  'R2: two approvals and a visual diff' 'R3 (secrets, auth, money, DNS and tofu' 'R2 plus Raghav'"'"'s `/approve <sha>`' \
-  'never merge your$' 'only the merge App merges' 'never counts as a Claude reviewer' 'decision 0007'; do
+# The committed org rules carry the v6 gate rule: two seat approvals, owner paths need Raghav (setkernel/hq#1247 D3).
+for marker in 'only the gate Worker merges' 'two seats other than the author approved its head' \
+  "An owner-path PR (the gate's list" "also needs Raghav's approving review" 'Never review or merge your own work' \
+  'counts as a seat reviewer' 'workers/gate/README.md'; do
   expect 0 "$marker" "claudeMd's Changes names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
 done
 expect 1 '^0$' "claudeMd drops the old review-before-merge rule" -- \
@@ -122,10 +122,7 @@ for marker in 'Every secret lives in Infisical' 'named with its reason (decision
   'A revert is a new forward commit' "made only on Raghav's word" '`allow-test-changes: <reason>`' \
   'Only Raghav$' 'never add, edit or remove it' '(vega-, rigel-, lyra-, orion-setkernel) is a real person' \
   'only they and their own agent use it' "acts on Raghav's login, so it never posts \`/approve <sha>\` or an APPROVE review" \
-  'only comment progress: any body edit, a tick too, voids it' \
-  'Claude Lead may merge a PR an agent seat (vega-, rigel-, lyra-, orion-setkernel) authored' \
-  "no review requests changes, Raghav hasn't objected" "decision 0007's \"Still Raghav's\" list" \
-  'new or raised dependencies and version holds' 'a PR needing an allow-test-changes line' 'anything you'"'"'re unsure of'; do
+  'only comment progress: any body edit, a tick too, voids it'; do
   expect 0 "$marker" "claudeMd names $marker" -- jq -r .claudeMd "$root/managed/settings.json"
 done
 expect 1 '^0$' "claudeMd drops Cloudflare or the vault as the home of secrets" -- \

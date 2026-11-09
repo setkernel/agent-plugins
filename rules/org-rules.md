@@ -11,7 +11,7 @@ READMEs, code comments or dashboards (https://github.com/setkernel/hq/blob/main/
    (`Refs` if partial). Closing without a PR: comment how it was verified. Blocked on the owner: label `owner`, set board Needs to Raghav, comment the exact action.
 ## Filing work
 Work for an agent is an issue in the repo it touches (setkernel/hq for cross-repo or infra work), on board 6, labelled `agent-ready`
-(and `owner` when only Raghav can do it), with body headings `## Why`, `## Acceptance criteria` (`- [ ]` items), `## Files likely touched`, `## Risk class` (R0–R3): the Lead releases only an issue that has all four.
+(and `owner` when only Raghav can do it), with body headings `## Why`, `## Acceptance criteria` (`- [ ]` items), `## Files likely touched`, `## Risk class` (normal, or owner when it touches an owner path): the Lead releases only an issue that has all four.
 Cloud sessions (`CLAUDE_CODE_REMOTE=true`) can't run `gh issue` or `gh project`: file with the GitHub tools or `gh api -X POST repos/{o}/{r}/issues` into the intake repository named in the session's environment instructions; never push to the default branch.
 ## When to stop
 Keep going while the next step doesn't need the owner; put status notes in the same message as the next
@@ -32,13 +32,11 @@ Silence is not approval. If a request has readings with different results, ask; 
 - Robust and portable: use what the platform already does (the OS scheduler, GitHub, Claude Code) before writing anything; a manual step done twice becomes automation in a repo, never a personal script; new code replaces more than it adds. Code that runs on a machine works on macOS and Ubuntu: a call only one OS has needs the other's branch.
 - When the test-diff guard fails a PR, the issue it closes needs an `allow-test-changes: <reason>` line. Only Raghav
   or Claude Lead adds it, after reading every test edit; the PR's author and reviewers never add, edit or remove it.
-- Merging (in force as each repo's gate is qualified; until then every PR needs Raghav's review):
-  a PR merges when its risk class's quorum is met on the same head commit. R0: one non-author
-  approval. R1: two non-author approvals. R2: two approvals and a visual diff.
-  R3 (secrets, auth, money, DNS and tofu, workflows, agent runtime and policy, destructive
-  changes): R2 plus Raghav's `/approve <sha>`. Never review your own work and never merge your
-  own; only the merge App merges; Raghav's seat never counts as a Claude reviewer.
-  Until the merge App merges, Claude Lead may merge a PR an agent seat (vega-, rigel-, lyra-, orion-setkernel) authored when two other agent seats approved its head after the push, no review requests changes, Raghav hasn't objected, checks are green and nothing on decision 0007's "Still Raghav's" list is touched (what goes live on merge, secrets, access, money, DNS and OpenTofu, workflows, policy and agent runtime, destructive changes, new or raised dependencies and version holds, a PR needing an allow-test-changes line, anything you're unsure of). Full rule: setkernel/hq decision 0007 (and `policy/risk.yml` once it exists).
+- Merging: only the gate Worker merges. It merges a PR once two seats other than the author approved its head
+  after the last push, no change request stands and checks are green. An owner-path PR (the gate's list: workflows,
+  secrets, auth, money, DNS and tofu, policy, agent runtime, the Workers) also needs Raghav's approving review on the
+  head, unless he opened it. Never review or merge your own work. No session on Raghav's seat, the Lead included,
+  posts an APPROVE review or counts as a seat reviewer. Full rule: setkernel/hq `workers/gate/README.md`.
 - A revert is a new forward commit that says what it reverts and why, made only on Raghav's word.
 - Done means the repo's checks pass on the tree you report (the `verify` skill); a check you could not run is reported as not run, with the reason, never as passed.
 ## Who did it
