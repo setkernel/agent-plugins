@@ -289,6 +289,24 @@ expect 0 "Version holds (setkernel org policy)" "the session hook prints the hol
   env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
 expect 0 "typescript-6.0" "the printed holds name each hold" -- \
   env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
+expect 0 "^- Working tree: clean" "inside a work tree the hook prints the branch and working tree" -- \
+  env CLAUDE_PROJECT_DIR="$hookrepo" sh "$root/plugins/setkernel/hooks/session-context.sh"
+# Outside a work tree (a fleet run folder, #80): the heading, the org-rules line and the holds, no git lines.
+# GIT_CEILING_DIRECTORIES keeps git from finding a repository above $tmp.
+hookdir=$tmp/hooknotrepo
+mkdir -p "$hookdir"
+hook_out() {
+  env GIT_CEILING_DIRECTORIES="$tmp" CLAUDE_PROJECT_DIR="$hookdir" sh "$1/plugins/setkernel/hooks/session-context.sh"
+}
+for pattern in "^# Session context (setkernel plugin)" "^- Follow the setkernel org rules" "typescript-6.0"; do
+  expect 0 "$pattern" "outside a work tree the hook prints: $pattern" -- hook_out "$root"
+done
+expect 1 "" "outside a work tree the hook leaves out the branch and working-tree lines" -- \
+  sh -c "env GIT_CEILING_DIRECTORIES='$tmp' CLAUDE_PROJECT_DIR='$hookdir' sh '$root/plugins/setkernel/hooks/session-context.sh' | grep -E '^- (Branch|Working tree)'"
+rm "$tmp/copy/plugins/setkernel/policy/holds.md"
+expect 0 "Follow the setkernel org rules" "without holds.md the hook still exits 0" -- hook_out "$tmp/copy"
+expect 1 "" "without holds.md the hook prints nothing after the org-rules line" -- \
+  sh -c "env GIT_CEILING_DIRECTORIES='$tmp' CLAUDE_PROJECT_DIR='$hookdir' sh '$tmp/copy/plugins/setkernel/hooks/session-context.sh' | sed '1,/Follow the setkernel org rules/d' | grep ."
 
 # The git guard (PreToolUse on Bash): blocks the forms a deny rule misses, lets ordinary work through.
 hooks=$root/plugins/setkernel/hooks
