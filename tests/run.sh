@@ -971,6 +971,7 @@ case "\$*" in
     printf '%s\n' zz-author zz-me realRaghavGupta zz-a zz-b zz-c ;;
   "api repos/example/app/pulls/1") cat "$rs/pr.json" ;;
   "api repos/example/app/pulls/1/requested_reviewers --jq .users[].login") cat "$rs/requested" ;;
+  "api graphql "*) cat "$rs/stale" 2>/dev/null; [ ! -f "$rs/nostale" ] || { echo "gh: Something went wrong (HTTP 502)" >&2; exit 1; } ;;
   *" search/issues "*) l=\${*##*review-requested:}; l=\${l%% *}; cat "$rs/load-\$l" 2>/dev/null || echo 0 ;;
   *"POST repos/example/app/pulls/1/requested_reviewers -f reviewers[]="*)
     l=\${*##*=}
@@ -1043,6 +1044,21 @@ rr_pr open false '' && printf '%s\n' zz-a zz-b >"$rs/refuse"
 expect 1 "only 1 of 2 seats on https://github.com/example/app/pull/1; no agent-review label added. Asked: zz-b zz-c zz-a. Failed: zz-b zz-a." \
   "with fewer than two seats it exits 1 and says who was asked and who failed" -- rr_run
 expect 0 "^0$" "and adds no label" -- posts issues/1/labels
+
+# After a push (#82): a seat whose change request stands on an older commit is asked again first.
+rr_pr open false '' && echo zz-a >"$rs/stale"
+expect 0 "asking zz-a again: their change request stands on an older commit" \
+  "a re-run after a push asks a seat with a standing change request again" -- rr_run
+expect 0 "^zz-a zz-b $" "first, then the least busy other seat" -- sh -c "tr '\n' ' ' <'$rs/requested'"
+rr_pr open false '' && printf '%s\n' zz-a zz-c >"$rs/stale"
+expect 0 "^Review requested from zz-a zz-c on" "two standing change requests: both are asked again" -- rr_run
+expect 0 "^2$" "and nobody new" -- posts pulls/1/requested_reviewers
+rr_pr open false '' && printf '%s\n' zz-me zz-author realRaghavGupta >"$rs/stale"
+expect 0 "^Review requested from zz-b zz-c on" "the caller, the author and Raghav are not asked again" -- rr_run
+rr_pr open false '' && : >"$rs/nostale"
+expect 1 "cannot read whose change request stands on https://github.com/example/app/pull/1" \
+  "a failed read of the reviews stops it before asking anyone" -- rr_run
+expect 0 "^0$" "and posts nothing" -- posts ''
 
 # The suite passes with SETKERNEL_GUARD_NO_PUSH=1 in its environment (as in sk-agent runs). One nested run, not recursive.
 if [ -z "${SETKERNEL_TESTS_NESTED:-}" ]; then

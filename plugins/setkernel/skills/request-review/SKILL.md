@@ -9,5 +9,7 @@ description: Ask two agent seats to review a person's pull request - request the
    `sh "${CLAUDE_PLUGIN_ROOT}/skills/request-review/request-review.sh" <owner>/<repo> <n>`
 3. Report its output as it is: on exit 0, the seats requested and the PR URL; on exit 1, the
    reason, and who was asked and who failed.
+   After a push that answers a change request, run it again: it first asks again every seat whose
+   change request stands on an older commit, then fills up to two seats as before.
 4. Don't work around a refusal: no `gh pr edit --add-reviewer`, no label by hand, no retry with
    other logins. Never approve, merge or comment on the PR, and never edit its body.

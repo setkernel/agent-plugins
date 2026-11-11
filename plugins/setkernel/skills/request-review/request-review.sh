@@ -12,6 +12,10 @@
 # member other than Raghav or the author who is a requested reviewer. With two seats on the PR the
 # label goes on and it exits 0; a re-run asks nobody new. Fewer than two after every candidate: no
 # label, exit 1. It never approves, merges, comments or edits the PR body. POSIX sh, gh and jq only.
+#
+# Run it again after a push (#82): a seat whose change request stands on an older commit is asked
+# again first, since the gate holds the PR until that seat reviews the new head. GitHub's
+# latestOpinionatedReviews says whose change request stands (a later comment doesn't lift it).
 set -u
 org=setkernel
 team=seats
@@ -66,9 +70,41 @@ now=$(requested) || die "cannot read the requested reviewers of $url"
 have=$(seats "$now")
 
 asked='' failed=''
+# ask <login>: one REST call; a login GitHub dropped is asked once more. Updates now, have, asked, failed.
+ask() {
+  asked="$asked $1"
+  ok=
+  for try in 1 2; do
+    if ! gh api -X POST "repos/$repo/pulls/$num/requested_reviewers" -f "reviewers[]=$1" >/dev/null; then
+      echo "request-review: GitHub refused $1; trying the next candidate." >&2
+      break
+    fi
+    now=$(requested) || die "cannot read the requested reviewers of $url"
+    printf '%s\n' "$now" | grep -Fqx -e "$1" && { ok=1; break; }
+    [ "$try" = 1 ] && echo "request-review: $1 was dropped; asking once more." >&2
+  done
+  [ -n "$ok" ] || failed="$failed $1"
+  have=$(seats "$now")
+}
+
+# Seats whose change request stands on an older commit than the head: ask them again first.
+stale=$(gh api graphql -F num="$num" -f owner="${repo%/*}" -f name="${repo#*/}" -f query='
+  query($owner: String!, $name: String!, $num: Int!) { repository(owner: $owner, name: $name) {
+    pullRequest(number: $num) { headRefOid latestOpinionatedReviews(first: 100) {
+      nodes { state author { login } commit { oid } } } } } }' \
+  --jq '.data.repository.pullRequest | .headRefOid as $h | .latestOpinionatedReviews.nodes[]
+    | select(.state == "CHANGES_REQUESTED" and .author != null and .commit.oid != $h) | .author.login') ||
+  die "cannot read whose change request stands on $url"
+for login in $(seats "$stale"); do
+  [ "$login" = "$me" ] && continue
+  printf '%s\n' "$now" | grep -Fqx -e "$login" && continue
+  echo "request-review: asking $login again: their change request stands on an older commit." >&2
+  ask "$login"
+done
+
 if [ "$(count "$have")" -lt "$want" ]; then
   # Least busy first, random among ties; a load the search can't count goes last.
-  printf '%s\n%s\n' "$me" "$have" | grep . >"$tmpd/skip"
+  printf '%s\n%s\n%s\n' "$me" "$have" "$stale" | grep . >"$tmpd/skip"
   order=$(grep -Fvx -f "$tmpd/skip" "$tmpd/pool" |
     while read -r login; do
       load=$(gh api -X GET search/issues --jq .total_count \
@@ -77,19 +113,7 @@ if [ "$(count "$have")" -lt "$want" ]; then
     done | awk 'BEGIN { srand() } { print $1, rand(), $2 }' | sort -k1,1n -k2,2n | cut -d' ' -f3)
   for login in $order; do
     [ "$(count "$have")" -ge "$want" ] && break
-    asked="$asked $login"
-    ok=
-    for try in 1 2; do
-      if ! gh api -X POST "repos/$repo/pulls/$num/requested_reviewers" -f "reviewers[]=$login" >/dev/null; then
-        echo "request-review: GitHub refused $login; trying the next candidate." >&2
-        break
-      fi
-      now=$(requested) || die "cannot read the requested reviewers of $url"
-      printf '%s\n' "$now" | grep -Fqx -e "$login" && { ok=1; break; }
-      [ "$try" = 1 ] && echo "request-review: $login was dropped; asking once more." >&2
-    done
-    [ -n "$ok" ] || failed="$failed $login"
-    have=$(seats "$now")
+    ask "$login"
   done
 fi
 
