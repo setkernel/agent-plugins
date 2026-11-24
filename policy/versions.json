@@ -2,17 +2,6 @@
   "$comment": "setkernel org version holds: the one source. Each hold keeps every setkernel repo below a version until Raghav has tested it. Edit here (Raghav's approval), run bin/generate, merge; the plugin shows the change in every Claude session and hq's version-policy workflow brings each repo's .github/dependabot.yml in line. Repo-specific pins stay in that repo's own config. Dependabot ignore entries use each ecosystem's version syntax; bin/dependabot-policy only evaluates '>=X.Y.Z' forms when matching open PRs.",
   "holds": [
     {
-      "id": "node-24",
-      "summary": "Node.js and @types/node stay on 24",
-      "rule": "Node 24 everywhere: .nvmrc, package.json engines.node, actions/setup-node node-version, Docker node images, the runner image, and @types/node 24.x.",
-      "why": "24 is the Active LTS. Node 26 becomes LTS on 2026-10-28 (github.com/nodejs/Release schedule.json).",
-      "lift": "Raghav has tested Node 26 after it is LTS.",
-      "ref": "https://github.com/setkernel/hq/issues/87",
-      "dependabot": {
-        "npm": [{ "dependency-name": "@types/node", "versions": [">=25"] }]
-      }
-    },
-    {
       "id": "typescript-6.0",
       "summary": "TypeScript stays on 6.0.x",
       "rule": "typescript 6.0.x in every package.json and lockfile; no TypeScript 7 or 6.1, including through tools that bundle it.",

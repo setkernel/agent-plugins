@@ -921,8 +921,8 @@ updates:
 EOF
 )
 dp "$d" >/dev/null
-expect 0 "dependency-name: '@types/node' # node-24" "a single-quoted file gets a single-quoted block" -- cat "$d/.github/dependabot.yml"
-expect 0 "versions: \['>=25'\]" "the versions list is single-quoted too" -- cat "$d/.github/dependabot.yml"
+expect 0 "dependency-name: 'typescript' # typescript-6.0" "a single-quoted file gets a single-quoted block" -- cat "$d/.github/dependabot.yml"
+expect 0 "versions: \['>=6.1.0'\]" "the versions list is single-quoted too" -- cat "$d/.github/dependabot.yml"
 expect 0 "current: " "the single-quoted block is current" -- dp --check "$d"
 d=$(dbrepo reformatted <<'EOF'
 version: 2
@@ -932,13 +932,13 @@ updates:
 EOF
 )
 dp "$d" >/dev/null
-sed -i.bak -e "s/\"@types\/node\"/'@types\/node'/" -e "s/\[\">=25\"\]/['>=25']/" -e "s/\"typescript\"/'typescript'/" -e "s/\[\">=6.1.0\"\]/['>=6.1.0']/" "$d/.github/dependabot.yml"
+sed -i.bak -e "s/\"typescript\"/'typescript'/" -e "s/\[\">=6.1.0\"\]/['>=6.1.0']/" "$d/.github/dependabot.yml"
 rm -f "$d/.github/dependabot.yml.bak"
 expect 0 "current: " "a block a formatter re-quoted stays current" -- dp --check "$d"
 
 expect 0 "typescript-6.0" "TypeScript 7 crosses its hold" -- dp crosses npm typescript 7.0.2
 expect 1 "" "TypeScript 6.0.3 does not cross" -- dp crosses npm typescript 6.0.3
-expect 0 "node-24" "@types/node 26 crosses" -- dp crosses npm @types/node 26.6.4
+expect 1 "" "@types/node 26 crosses no hold (node-24 lifted 2026-11-24)" -- dp crosses npm @types/node 26.6.4
 expect 1 "" "a hold only applies to its ecosystem" -- dp crosses github-actions typescript 7.0.0
 
 # The verify skill (#15) tells the reader to prefer `make check` and how to report Docker-less runs.
