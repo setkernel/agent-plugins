@@ -11,7 +11,7 @@ READMEs, code comments or dashboards (https://github.com/setkernel/hq/blob/main/
    (`Refs` if partial). Closing without a PR: comment how it was verified. Blocked on the owner: label `owner`, set board Needs to Raghav, comment the exact action.
 ## Filing work
 Work for an agent is an issue in the repo it touches (setkernel/hq for cross-repo or infra work), on board 6, labelled `agent-ready`
-(and `owner` when only Raghav can do it), with body headings `## Why`, `## Acceptance criteria` (`- [ ]` items), `## Files likely touched`, `## Risk class` (normal, or owner when it touches an owner path): the Lead releases only an issue that has all four.
+(never by a seat run: the Lead or Raghav releases what it files; and `owner` when only Raghav can do it), with body headings `## Why`, `## Acceptance criteria` (`- [ ]` items), `## Files likely touched`, `## Risk class` (normal, or owner when it touches an owner path): the Lead releases only an issue that has all four.
 Cloud sessions (`CLAUDE_CODE_REMOTE=true`) can't run `gh issue` or `gh project`: file with the GitHub tools or `gh api -X POST repos/{o}/{r}/issues` into the intake repository named in the session's environment instructions; never push to the default branch.
 ## When to stop
 Keep going while the next step doesn't need the owner; put status notes in the same message as the next
@@ -32,11 +32,11 @@ Silence is not approval. If a request has readings with different results, ask; 
 - Robust and portable: use what the platform already does (the OS scheduler, GitHub, Claude Code) before writing anything; a manual step done twice becomes automation in a repo, never a personal script; new code replaces more than it adds. Code that runs on a machine works on macOS and Ubuntu: a call only one OS has needs the other's branch.
 - When the test-diff guard fails a PR, the issue it closes needs an `allow-test-changes: <reason>` line. Only Raghav
   or Claude Lead adds it, after reading every test edit; the PR's author and reviewers never add, edit or remove it.
-- Merging: only the gate Worker merges. It merges a PR once two seats other than the author approved its head
-  after the last push, no change request stands and checks are green. An owner-path PR (the gate's list: workflows,
-  secrets, auth, money, DNS and tofu, policy, agent runtime, the Workers) also needs Raghav's approving review on the
-  head, unless he opened it. Never review or merge your own work. No session on Raghav's seat, the Lead included,
-  posts an APPROVE review or counts as a seat reviewer. Full rule: setkernel/hq `workers/gate/README.md`.
+- Merging: only the gate Worker merges, except in the estate repos (estate, estate-* and custodian-ops). There a Lead session merges its own Lead PRs,
+  and a seat's PR once two other seats approved it and the Lead's re-run plan matches the stated change; a destroy or replace waits for Raghav.
+  The Lead applies the plan locally and comments the result on the PR. Elsewhere the gate merges a PR once two seats other than the author approved its head
+  after the last push, no change request stands and checks are green. An owner-path PR (the gate's list: workflows, secrets, auth, money, DNS and tofu, policy, agent runtime, the Workers) also needs Raghav's approving review on the head, unless he opened it; in hq a seat's owner-path PR needs him only under `.github/**`, CODEOWNERS, `.gitmodules`, `agents/lead/**` and `workers/gate/**`.
+  Never review or merge your own work (bar a Lead PR in an estate repo). No session on Raghav's seat, the Lead included, posts an APPROVE review or counts as a seat reviewer. Full rule: setkernel/hq `workers/gate/README.md`.
 - Request changes only for merge blockers: an unmet acceptance criterion, a bug with a reproduction, a secret
   or security problem, a failing check, a change outside the issue. Anything else (naming, wording, style, a better
   way) is at most 5 approval nits or a follow-up issue. A changes round fixes only those blockers; its re-review
@@ -51,10 +51,10 @@ stateless work, at most 2 at a time unless your task says otherwise. Search with
 subagent as a colleague who knows nothing yet, and suggest a deeper review of your own finished work instead of starting one.
 ## Who did it
 Each employee account (vega-, rigel-, lyra-, orion-setkernel) is a real person's: only they and their own agent use it.
-setkernel pays for 5 Claude seats, Raghav's and one per employee; no other seat, bot login or shared account is added.
+setkernel pays for 5 Claude seats, Raghav's and one per employee; no other seat, bot login or shared account is added (the Lead's App aside).
 Each person may run 2–3 sessions at once on their own machines or VMs, sharing their seat's limits.
-Only the Lead does Lead work (releasing, assigning and splitting issues, summaries for Raghav): the timer on raghav-dev,
-or a session Raghav starts as Lead. The Lead keeps no scratch scripts or pollers: CI on the merge ref is the check.
+Only the Lead does Lead work (releasing, assigning and splitting issues, summaries for Raghav, estate merges): the timer on raghav-dev,
+or a session Raghav starts as Lead on his Mac, raghav-dev or Claude Cloud; once the setkernel-lead App exists, it opens PRs as setkernel-lead[bot]. The Lead keeps no scratch scripts or pollers: CI on the merge ref is the check.
 Unsigned work from Raghav's account shows as him: use your branch prefix, and from his account sign:
 - A seat's assign.yml run, on the seat's own login: `agent/<issue>-<slug>`; no signature.
 - Claude Code on the web (`CLAUDE_CODE_REMOTE=true`): `claude/<topic>`, `— Claude Cloud`.
